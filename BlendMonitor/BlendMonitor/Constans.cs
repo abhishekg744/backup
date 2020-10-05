@@ -13,13 +13,24 @@ namespace BlendMonitor
         public const string cstrGen = "GENERAL";        // string used for message reference
         public const string cstrSys = "SYSTEM";         // string used for message reference
         public const double cDblEp = 0.0000000001d;      // 1E-10, small number used to test the "= 0" condition
-        public static DateTime cdteNull = DateTime.Parse("1900-01-01");       
+        public static DateTime cdteNull = DateTime.Parse("1900-01-01");
+        public const string cstrModelDir = "\\Model\\";
+        public const string cstrInputDir = "\\Input\\";
+        public const string cstrOutputDir = "\\Output\\";
+        public const string cstrErrorDir = "\\Error";
 
         public enum DebugLevels
         {
             Low = 1,
             Medium,
             High
+        }
+        public enum StartStop
+        {
+
+            STRT,
+
+            STP,
         }
 
         public enum msgTmpltIDs
@@ -270,6 +281,18 @@ namespace BlendMonitor
         public enum ValidInvalid {
             invalid,
             valid,
+        }
+        public enum GAMSCalcTypes
+        {
+
+            INTERVL,
+
+            // Intervl
+            AVERAGE,
+
+            LINEPROP,
+
+            OPTIMIZE,
         }
     }
 }

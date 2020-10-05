@@ -57,12 +57,17 @@ namespace BlendMonitor.Entities
             AbcBlendersTargVolT = new HashSet<AbcBlenders>();
             AbcBlendersTotalFlowT = new HashSet<AbcBlenders>();
             AbcBlendersTotalVolT = new HashSet<AbcBlenders>();
+            AbcCompLineupEqp = new HashSet<AbcCompLineupEqp>();
+            AbcCompLineups = new HashSet<AbcCompLineups>();
             AbcProdLineupsPreselectionT = new HashSet<AbcProdLineups>();
             AbcProdLineupsSelectionFbT = new HashSet<AbcProdLineups>();
             AbcProdLineupsSelectionT = new HashSet<AbcProdLineups>();
             AbcProjDefaultsUserMonitorTid1Navigation = new HashSet<AbcProjDefaults>();
             AbcProjDefaultsUserMonitorTid2Navigation = new HashSet<AbcProjDefaults>();
             AbcProjDefaultsWdogT = new HashSet<AbcProjDefaults>();
+            AbcPumpsInuseTag = new HashSet<AbcPumps>();
+            AbcPumpsModeT = new HashSet<AbcPumps>();
+            AbcPumpsStatusTag = new HashSet<AbcPumps>();
             AbcStationsFlowMeasTag = new HashSet<AbcStations>();
             AbcStationsFlowOpTag = new HashSet<AbcStations>();
             AbcStationsFlowSpTag = new HashSet<AbcStations>();
@@ -168,12 +173,17 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlenders> AbcBlendersTargVolT { get; set; }
         public virtual ICollection<AbcBlenders> AbcBlendersTotalFlowT { get; set; }
         public virtual ICollection<AbcBlenders> AbcBlendersTotalVolT { get; set; }
+        public virtual ICollection<AbcCompLineupEqp> AbcCompLineupEqp { get; set; }
+        public virtual ICollection<AbcCompLineups> AbcCompLineups { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsPreselectionT { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsSelectionFbT { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsSelectionT { get; set; }
         public virtual ICollection<AbcProjDefaults> AbcProjDefaultsUserMonitorTid1Navigation { get; set; }
         public virtual ICollection<AbcProjDefaults> AbcProjDefaultsUserMonitorTid2Navigation { get; set; }
         public virtual ICollection<AbcProjDefaults> AbcProjDefaultsWdogT { get; set; }
+        public virtual ICollection<AbcPumps> AbcPumpsInuseTag { get; set; }
+        public virtual ICollection<AbcPumps> AbcPumpsModeT { get; set; }
+        public virtual ICollection<AbcPumps> AbcPumpsStatusTag { get; set; }
         public virtual ICollection<AbcStations> AbcStationsFlowMeasTag { get; set; }
         public virtual ICollection<AbcStations> AbcStationsFlowOpTag { get; set; }
         public virtual ICollection<AbcStations> AbcStationsFlowSpTag { get; set; }

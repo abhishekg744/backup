@@ -26,6 +26,8 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcBlendIntervalProps> AbcBlendIntervalProps { get; set; }
         public virtual DbSet<AbcBlendIntervals> AbcBlendIntervals { get; set; }
         public virtual DbSet<AbcBlendProps> AbcBlendProps { get; set; }
+        public virtual DbSet<AbcBlendSampleProps> AbcBlendSampleProps { get; set; }
+        public virtual DbSet<AbcBlendSamples> AbcBlendSamples { get; set; }
         public virtual DbSet<AbcBlendSources> AbcBlendSources { get; set; }
         public virtual DbSet<AbcBlendStations> AbcBlendStations { get; set; }
         public virtual DbSet<AbcBlendSwings> AbcBlendSwings { get; set; }
@@ -34,10 +36,14 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcBlends> AbcBlends { get; set; }
         public virtual DbSet<AbcCalcCoefficients> AbcCalcCoefficients { get; set; }
         public virtual DbSet<AbcCalcRoutines> AbcCalcRoutines { get; set; }
+        public virtual DbSet<AbcCompLineupEqp> AbcCompLineupEqp { get; set; }
+        public virtual DbSet<AbcCompLineups> AbcCompLineups { get; set; }
         public virtual DbSet<AbcGrades> AbcGrades { get; set; }
         public virtual DbSet<AbcIcons> AbcIcons { get; set; }
         public virtual DbSet<AbcLabTankData> AbcLabTankData { get; set; }
+        public virtual DbSet<AbcLineupGeo> AbcLineupGeo { get; set; }
         public virtual DbSet<AbcMaterials> AbcMaterials { get; set; }
+        public virtual DbSet<AbcPrdAdditives> AbcPrdAdditives { get; set; }
         public virtual DbSet<AbcPrdgrpMatProps> AbcPrdgrpMatProps { get; set; }
         public virtual DbSet<AbcPrdgrpProps> AbcPrdgrpProps { get; set; }
         public virtual DbSet<AbcPrdgrps> AbcPrdgrps { get; set; }
@@ -46,6 +52,7 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcProjDefaults> AbcProjDefaults { get; set; }
         public virtual DbSet<AbcPropSources> AbcPropSources { get; set; }
         public virtual DbSet<AbcProperties> AbcProperties { get; set; }
+        public virtual DbSet<AbcPumps> AbcPumps { get; set; }
         public virtual DbSet<AbcRbcStates> AbcRbcStates { get; set; }
         public virtual DbSet<AbcScanGroups> AbcScanGroups { get; set; }
         public virtual DbSet<AbcStations> AbcStations { get; set; }
@@ -1046,6 +1053,137 @@ namespace BlendMonitor.Entities
                     .WithMany(p => p.AbcBlendProps)
                     .HasForeignKey(d => d.SourceId)
                     .HasConstraintName("FK_SOURCE_ID_BLEND_PROPS");
+            });
+
+            modelBuilder.Entity<AbcBlendSampleProps>(entity =>
+            {
+                entity.HasKey(e => new { e.BlendId, e.SampleName, e.PropId });
+
+                entity.ToTable("ABC_BLEND_SAMPLE_PROPS");
+
+                entity.Property(e => e.BlendId).HasColumnName("BLEND_ID");
+
+                entity.Property(e => e.SampleName)
+                    .HasColumnName("SAMPLE_NAME")
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.PropId).HasColumnName("PROP_ID");
+
+                entity.Property(e => e.AnzValue).HasColumnName("ANZ_VALUE");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Feedback).HasColumnName("FEEDBACK");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.SetpointPred).HasColumnName("SETPOINT_PRED");
+
+                entity.Property(e => e.UsedFlag)
+                    .IsRequired()
+                    .HasColumnName("USED_FLAG")
+                    .HasMaxLength(3)
+                    .IsUnicode(false)
+                    .HasDefaultValueSql("('NO')");
+
+                entity.Property(e => e.Value).HasColumnName("VALUE");
+
+                entity.HasOne(d => d.Blend)
+                    .WithMany(p => p.AbcBlendSampleProps)
+                    .HasForeignKey(d => d.BlendId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_BLEND_ID_SAMPLE_PROPS");
+
+                entity.HasOne(d => d.Prop)
+                    .WithMany(p => p.AbcBlendSampleProps)
+                    .HasForeignKey(d => d.PropId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_PROP_ID_SAMPLE_PROPS");
+            });
+
+            modelBuilder.Entity<AbcBlendSamples>(entity =>
+            {
+                entity.HasKey(e => new { e.BlendId, e.Name });
+
+                entity.ToTable("ABC_BLEND_SAMPLES");
+
+                entity.Property(e => e.BlendId).HasColumnName("BLEND_ID");
+
+                entity.Property(e => e.Name)
+                    .HasColumnName("NAME")
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.ProcessSampleFlag)
+                    .HasColumnName("PROCESS_SAMPLE_FLAG")
+                    .HasMaxLength(3)
+                    .IsUnicode(false)
+                    .HasDefaultValueSql("('NO')");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.StartDate)
+                    .HasColumnName("START_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.StartVolume).HasColumnName("START_VOLUME");
+
+                entity.Property(e => e.StopDate)
+                    .HasColumnName("STOP_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.StopVolume).HasColumnName("STOP_VOLUME");
+
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasColumnName("TYPE")
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.HasOne(d => d.Blend)
+                    .WithMany(p => p.AbcBlendSamples)
+                    .HasForeignKey(d => d.BlendId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_BLEND_ID_SAMPLES");
             });
 
             modelBuilder.Entity<AbcBlendSources>(entity =>
@@ -2228,6 +2366,153 @@ namespace BlendMonitor.Entities
                     .HasConstraintName("FK_OUOM_ID_CALC");
             });
 
+            modelBuilder.Entity<AbcCompLineupEqp>(entity =>
+            {
+                entity.HasKey(e => new { e.LineId, e.LineEqpOrder })
+                    .HasName("PK_COMP_LINEUP_EQP");
+
+                entity.ToTable("ABC_COMP_LINEUP_EQP");
+
+                entity.Property(e => e.LineId).HasColumnName("LINE_ID");
+
+                entity.Property(e => e.LineEqpOrder).HasColumnName("LINE_EQP_ORDER");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.PumpId).HasColumnName("PUMP_ID");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.SelectionTid).HasColumnName("SELECTION_TID");
+
+                entity.Property(e => e.StationId).HasColumnName("STATION_ID");
+
+                entity.HasOne(d => d.Line)
+                    .WithMany(p => p.AbcCompLineupEqp)
+                    .HasForeignKey(d => d.LineId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_LINE_ID_COMP_LINEUP_EQP");
+
+                entity.HasOne(d => d.Pump)
+                    .WithMany(p => p.AbcCompLineupEqp)
+                    .HasForeignKey(d => d.PumpId)
+                    .HasConstraintName("FK_PUMP_ID_COMP_LINEUP_EQP");
+
+                entity.HasOne(d => d.SelectionT)
+                    .WithMany(p => p.AbcCompLineupEqp)
+                    .HasForeignKey(d => d.SelectionTid)
+                    .HasConstraintName("FK_SELECTION_TID_COMP_LINE_EQP");
+
+                entity.HasOne(d => d.Station)
+                    .WithMany(p => p.AbcCompLineupEqp)
+                    .HasForeignKey(d => d.StationId)
+                    .HasConstraintName("FK_STATION_ID_COMP_LINEUP_EQP");
+            });
+
+            modelBuilder.Entity<AbcCompLineups>(entity =>
+            {
+                entity.ToTable("ABC_COMP_LINEUPS");
+
+                entity.HasIndex(e => e.DcsLineupNum)
+                    .HasName("SYS_C0013096")
+                    .IsUnique();
+
+                entity.HasIndex(e => e.Name)
+                    .HasName("UQ_NAME_COMP_LINEUPS")
+                    .IsUnique();
+
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.DcsLineupNum).HasColumnName("DCS_LINEUP_NUM");
+
+                entity.Property(e => e.Description)
+                    .HasColumnName("DESCRIPTION")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.DestinationId).HasColumnName("DESTINATION_ID");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.LineGeoId).HasColumnName("LINE_GEO_ID");
+
+                entity.Property(e => e.MaxFlow).HasColumnName("MAX_FLOW");
+
+                entity.Property(e => e.MinFlow).HasColumnName("MIN_FLOW");
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasColumnName("NAME")
+                    .HasMaxLength(25)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.SelectionTid).HasColumnName("SELECTION_TID");
+
+                entity.Property(e => e.SourceId).HasColumnName("SOURCE_ID");
+
+                entity.Property(e => e.Volume).HasColumnName("VOLUME");
+
+                entity.HasOne(d => d.Destination)
+                    .WithMany(p => p.AbcCompLineups)
+                    .HasForeignKey(d => d.DestinationId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_DESTINATION_ID_COMP_LINEUPS");
+
+                entity.HasOne(d => d.LineGeo)
+                    .WithMany(p => p.AbcCompLineups)
+                    .HasForeignKey(d => d.LineGeoId)
+                    .HasConstraintName("FK_LINE_GEO_ID_COMP_LINEUPS");
+
+                entity.HasOne(d => d.SelectionT)
+                    .WithMany(p => p.AbcCompLineups)
+                    .HasForeignKey(d => d.SelectionTid)
+                    .HasConstraintName("FK_SELECTION_TID_COMP_LINEUPS");
+
+                entity.HasOne(d => d.Source)
+                    .WithMany(p => p.AbcCompLineups)
+                    .HasForeignKey(d => d.SourceId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_SOURCE_ID_COMP_LINEUPS");
+            });
+
             modelBuilder.Entity<AbcGrades>(entity =>
             {
                 entity.ToTable("ABC_GRADES");
@@ -2394,6 +2679,61 @@ namespace BlendMonitor.Entities
                     .HasConstraintName("FK_USAGEID_LABTANKDATA");
             });
 
+            modelBuilder.Entity<AbcLineupGeo>(entity =>
+            {
+                entity.ToTable("ABC_LINEUP_GEO");
+
+                entity.HasIndex(e => e.Name)
+                    .HasName("UQ_NAME_LINEUP_GEO")
+                    .IsUnique();
+
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Description)
+                    .HasColumnName("DESCRIPTION")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.IconId).HasColumnName("ICON_ID");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasColumnName("NAME")
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.NumOfPumps).HasColumnName("NUM_OF_PUMPS");
+
+                entity.Property(e => e.NumOfStations).HasColumnName("NUM_OF_STATIONS");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.HasOne(d => d.Icon)
+                    .WithMany(p => p.AbcLineupGeo)
+                    .HasForeignKey(d => d.IconId)
+                    .HasConstraintName("FK_ICON_ID_LINEUP_GEO");
+            });
+
             modelBuilder.Entity<AbcMaterials>(entity =>
             {
                 entity.ToTable("ABC_MATERIALS");
@@ -2442,6 +2782,68 @@ namespace BlendMonitor.Entities
                 entity.Property(e => e.Rowid)
                     .HasColumnName("ROWID")
                     .HasDefaultValueSql("(newid())");
+            });
+
+            modelBuilder.Entity<AbcPrdAdditives>(entity =>
+            {
+                entity.HasKey(e => new { e.PrdgrpId, e.ProductId, e.AdditiveId })
+                    .HasName("PK_PRD_ADDITIVES");
+
+                entity.ToTable("ABC_PRD_ADDITIVES");
+
+                entity.Property(e => e.PrdgrpId).HasColumnName("PRDGRP_ID");
+
+                entity.Property(e => e.ProductId).HasColumnName("PRODUCT_ID");
+
+                entity.Property(e => e.AdditiveId).HasColumnName("ADDITIVE_ID");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.DefaultSetpoint).HasColumnName("DEFAULT_SETPOINT");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.UnitFactor)
+                    .HasColumnName("UNIT_FACTOR")
+                    .HasDefaultValueSql("((1))");
+
+                entity.Property(e => e.UomId).HasColumnName("UOM_ID");
+
+                entity.HasOne(d => d.Additive)
+                    .WithMany(p => p.AbcPrdAdditivesAdditive)
+                    .HasForeignKey(d => d.AdditiveId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_ADID_PRD_ADDITIVES");
+
+                entity.HasOne(d => d.Prdgrp)
+                    .WithMany(p => p.AbcPrdAdditives)
+                    .HasForeignKey(d => d.PrdgrpId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_PRID_PRD_ADDITIVES");
+
+                entity.HasOne(d => d.Product)
+                    .WithMany(p => p.AbcPrdAdditivesProduct)
+                    .HasForeignKey(d => d.ProductId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_PGID_PRD_ADDITIVES");
             });
 
             modelBuilder.Entity<AbcPrdgrpMatProps>(entity =>
@@ -3757,6 +4159,95 @@ namespace BlendMonitor.Entities
                     .HasForeignKey(d => d.UomId)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_UOM_ID_PROPERTIES");
+            });
+
+            modelBuilder.Entity<AbcPumps>(entity =>
+            {
+                entity.ToTable("ABC_PUMPS");
+
+                entity.HasIndex(e => e.DcsPumpId)
+                    .HasName("UQ_DCS_PUMP_ID_PUMPS")
+                    .IsUnique();
+
+                entity.HasIndex(e => e.Name)
+                    .HasName("UQ_NAME_PUMPS")
+                    .IsUnique();
+
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.DcsPumpId).HasColumnName("DCS_PUMP_ID");
+
+                entity.Property(e => e.FlowUomId).HasColumnName("FLOW_UOM_ID");
+
+                entity.Property(e => e.InSerFlag)
+                    .IsRequired()
+                    .HasColumnName("IN_SER_FLAG")
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.InuseTagId).HasColumnName("INUSE_TAG_ID");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Max).HasColumnName("MAX");
+
+                entity.Property(e => e.Min).HasColumnName("MIN");
+
+                entity.Property(e => e.ModeTid).HasColumnName("MODE_TID");
+
+                entity.Property(e => e.Name)
+                    .HasColumnName("NAME")
+                    .HasMaxLength(12)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.PrdgrpId).HasColumnName("PRDGRP_ID");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.StatusTagId).HasColumnName("STATUS_TAG_ID");
+
+                entity.HasOne(d => d.FlowUom)
+                    .WithMany(p => p.AbcPumps)
+                    .HasForeignKey(d => d.FlowUomId)
+                    .HasConstraintName("FK_FUOM_ID_PUMPS");
+
+                entity.HasOne(d => d.InuseTag)
+                    .WithMany(p => p.AbcPumpsInuseTag)
+                    .HasForeignKey(d => d.InuseTagId)
+                    .HasConstraintName("FK_INUSE_TAG_ID_PUMPS");
+
+                entity.HasOne(d => d.ModeT)
+                    .WithMany(p => p.AbcPumpsModeT)
+                    .HasForeignKey(d => d.ModeTid)
+                    .HasConstraintName("FK_MODE_TID_PUMPS");
+
+                entity.HasOne(d => d.Prdgrp)
+                    .WithMany(p => p.AbcPumps)
+                    .HasForeignKey(d => d.PrdgrpId)
+                    .HasConstraintName("FK_PRDGRP_ID_PUMPS");
+
+                entity.HasOne(d => d.StatusTag)
+                    .WithMany(p => p.AbcPumpsStatusTag)
+                    .HasForeignKey(d => d.StatusTagId)
+                    .HasConstraintName("FK_STATUS_TAG_ID_PUMPS");
             });
 
             modelBuilder.Entity<AbcRbcStates>(entity =>

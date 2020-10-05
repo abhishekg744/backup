@@ -1,5 +1,6 @@
 ﻿using BlendMonitor.Repository;
 using Microsoft.Extensions.Configuration;
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -131,8 +132,27 @@ namespace BlendMonitor
             if (intIntvNum == 1 && blnIntvExists == true)
             {
                 await _repository.SetBiasCalcCurrent3(lngBldID, intIntvNum);
-            }            
+            }
         }
+
+        // return time conversion factor for (time unit -> day)
+        public static int TimeConvFactor(string strTimeUnit)
+        {
+            int rtrnData = -1;
+            if (Strings.InStr(strTimeUnit, "H") == 1)
+                rtrnData = 24;
+            else if (Strings.InStr(strTimeUnit, "MIN") == 1)
+                rtrnData = 1440;
+            else if (Strings.InStr(strTimeUnit, "DAY") == 1)
+                rtrnData = 1;
+            else if (Strings.InStr(strTimeUnit, "SEC") == 1)
+                rtrnData = 86400;
+            else
+                // err msg "Unrecognized time unit"
+                rtrnData = -1;
+            
+            return rtrnData;
+        }   // ************* TimeConvFactor *************
 
 
         // log run time error messages into a text log

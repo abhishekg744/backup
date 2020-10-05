@@ -8,7 +8,7 @@ namespace BlendMonitor.Model
     {
         public double? TotCompVolTid { get; set; }
         public double MatId { get; set; }
-        public string TotalStationTag { get; set; }
+        public string TotalCompTag { get; set; }
         public double? ReadValue { get; set; }
         public DateTime? ValueTime { get; set; }
         public string ValueQuality { get; set; }

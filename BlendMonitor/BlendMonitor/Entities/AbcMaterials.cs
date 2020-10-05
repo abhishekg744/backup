@@ -12,6 +12,8 @@ namespace BlendMonitor.Entities
             AbcBlendStations = new HashSet<AbcBlendStations>();
             AbcBlenderComps = new HashSet<AbcBlenderComps>();
             AbcBlends = new HashSet<AbcBlends>();
+            AbcPrdAdditivesAdditive = new HashSet<AbcPrdAdditives>();
+            AbcPrdAdditivesProduct = new HashSet<AbcPrdAdditives>();
             AbcPrdgrpMatProps = new HashSet<AbcPrdgrpMatProps>();
             AbcTankComposition = new HashSet<AbcTankComposition>();
             AbcTanks = new HashSet<AbcTanks>();
@@ -32,6 +34,8 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlendStations> AbcBlendStations { get; set; }
         public virtual ICollection<AbcBlenderComps> AbcBlenderComps { get; set; }
         public virtual ICollection<AbcBlends> AbcBlends { get; set; }
+        public virtual ICollection<AbcPrdAdditives> AbcPrdAdditivesAdditive { get; set; }
+        public virtual ICollection<AbcPrdAdditives> AbcPrdAdditivesProduct { get; set; }
         public virtual ICollection<AbcPrdgrpMatProps> AbcPrdgrpMatProps { get; set; }
         public virtual ICollection<AbcTankComposition> AbcTankComposition { get; set; }
         public virtual ICollection<AbcTanks> AbcTanks { get; set; }

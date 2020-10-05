@@ -11,6 +11,8 @@ namespace BlendMonitor.Entities
             AbcBlendDest = new HashSet<AbcBlendDest>();
             AbcBlendIntervals = new HashSet<AbcBlendIntervals>();
             AbcBlendProps = new HashSet<AbcBlendProps>();
+            AbcBlendSampleProps = new HashSet<AbcBlendSampleProps>();
+            AbcBlendSamples = new HashSet<AbcBlendSamples>();
             AbcBlendStations = new HashSet<AbcBlendStations>();
             AbcBlendSwings = new HashSet<AbcBlendSwings>();
             AbcTanks = new HashSet<AbcTanks>();
@@ -82,6 +84,8 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlendDest> AbcBlendDest { get; set; }
         public virtual ICollection<AbcBlendIntervals> AbcBlendIntervals { get; set; }
         public virtual ICollection<AbcBlendProps> AbcBlendProps { get; set; }
+        public virtual ICollection<AbcBlendSampleProps> AbcBlendSampleProps { get; set; }
+        public virtual ICollection<AbcBlendSamples> AbcBlendSamples { get; set; }
         public virtual ICollection<AbcBlendStations> AbcBlendStations { get; set; }
         public virtual ICollection<AbcBlendSwings> AbcBlendSwings { get; set; }
         public virtual ICollection<AbcTanks> AbcTanks { get; set; }

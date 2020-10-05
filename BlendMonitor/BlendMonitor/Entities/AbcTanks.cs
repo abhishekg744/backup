@@ -12,6 +12,7 @@ namespace BlendMonitor.Entities
             AbcBlendSwingsFromTk = new HashSet<AbcBlendSwings>();
             AbcBlendSwingsToTk = new HashSet<AbcBlendSwings>();
             AbcBlenderComps = new HashSet<AbcBlenderComps>();
+            AbcCompLineups = new HashSet<AbcCompLineups>();
             AbcLabTankData = new HashSet<AbcLabTankData>();
             AbcProdLineupsDestination = new HashSet<AbcProdLineups>();
             AbcProdLineupsTransferLine = new HashSet<AbcProdLineups>();
@@ -83,6 +84,7 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlendSwings> AbcBlendSwingsFromTk { get; set; }
         public virtual ICollection<AbcBlendSwings> AbcBlendSwingsToTk { get; set; }
         public virtual ICollection<AbcBlenderComps> AbcBlenderComps { get; set; }
+        public virtual ICollection<AbcCompLineups> AbcCompLineups { get; set; }
         public virtual ICollection<AbcLabTankData> AbcLabTankData { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsDestination { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsTransferLine { get; set; }

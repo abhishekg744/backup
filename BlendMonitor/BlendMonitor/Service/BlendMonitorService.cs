@@ -57,7 +57,7 @@ namespace BlendMonitor.Service
         double[,] gArPrevTargetRate;
         double[,] gArPrevTransferVol;
         bool gblnIntFeasible, gblnAvgFeasible;
-        bool[] gblnFirstBiasCalc;
+        bool[,] gblnFirstBiasCalc;
         int[] gintStartStopIntv = new int[1];
         bool[] gblnBiasRedimDone;
         bool gblnLoadedResBld;
@@ -1217,7 +1217,7 @@ namespace BlendMonitor.Service
                         curblend.intCurIntv = Convert.ToInt32(vntIntvNum + 1);
                         //LINEPROP at the middle of the interval has been suppressed.
                         // Reset the flag to procces lineprop calc only two times and no more
-                        //          gIntProcLineProp(intBldrIdx) = 1
+                        //          gIntProcLineProp[intBldrIdx] = 1
                         // create records for new interval in ABC_BLEND_INTERVALS,
                         // ABC_BLEND_INTERVAL_COMPS and ABC_BLEND_INTERVAL_PROPS
                         // ERIK *** use CheckNewIntvRecs in BLEND_MON
@@ -1386,20 +1386,786 @@ namespace BlendMonitor.Service
                 }                
             }
         }
+        private async Task<double> ChkStnVol(int intBldrIdx, double intPrdgrpID, double? dblCurRcp, double? intStnId, DebugLevels enumDebugLevel)
+        {
+            string strFlowDenom;
+            // BDS 6-Jul-2012 PQ-D0074 Calculate the volume change
+            // for a given blend station from its last update time
+
+            double dblDltTime;
+            int intTimeConv;
+            long intI;
+            DateTime dteLastValTime;
+            double rtrData = 0;
+
+            // Get flow denominator for the product group
+            strFlowDenom = await _repository.GetFlowDenom(Convert.ToInt32(intPrdgrpID));
+
+            intTimeConv = Shared.TimeConvFactor(strFlowDenom);
+
+            // Find database update time stored for the specified blend station
+            dteLastValTime = cdteNull;
+            //UBound(gArStnValTime[intBldrIdx].arKey
+            for (intI = 0; intI <= gArStnValTime[intBldrIdx].arKey.Max(); intI++)
+            {
+                if (gArStnValTime[intBldrIdx].arKey[intI] == intStnId)
+                {
+                    dteLastValTime = gArStnValTime[intBldrIdx].arValueTime[intI];
+                    break;
+                }
+            }
+
+            if (dteLastValTime == cdteNull)
+                // Assuming Blend Monitor cycle time is in minutes
+                dblDltTime = gDblCycleTime / (double)(60 * intTimeConv);
+            else
+                dblDltTime = Convert.ToDouble(DateTime.Now - dteLastValTime);
+
+            rtrData = Convert.ToDouble(dblCurRcp) * Convert.ToDouble(gTagTotFlow.vntTagVal) * intTimeConv * dblDltTime / (double)100;
+            return rtrData;
+       
+        }
+        private async Task<double> ChkCompVol(int intBldrIdx, int intPrdgrpID, double dblCurRcp, DateTime dteLastValTime, DebugLevels enumDebugLevel)
+        {
+            // BDS 11-May-2012 PQ-D0074 Modified to calculate a volume
+            // change using the last update time passed as a parameter
+            // Private Function ChkCompVol(ByVal intBldrIdx As Integer, ByVal intPrdgrpID As Integer, _
+            // ByVal dblCurRcp As Double, ByVal intCompIdx As Integer, _
+            // ByVal enumDebugLevel As DebugLevels) As Double
+            string strFlowDenom;
+            double dblDltTime;
+            int intTimeConv;
+            // TODO: On Error GoTo Warning!!!: The statement is not translatable 
+            // get flow denominator for the product group
+            strFlowDenom = await _repository.GetFlowDenom(intPrdgrpID);
+            intTimeConv = Shared.TimeConvFactor(strFlowDenom);
+            
+            if ((dteLastValTime == cdteNull))
+            {
+                //  Assuming the cycle time of BMON is in minutes
+                dblDltTime = (gDblCycleTime / (60 * intTimeConv));
+            }
+            else
+            {
+                dblDltTime = Convert.ToDouble(DateTime.Now - dteLastValTime);
+            }
+
+            return (dblCurRcp * Convert.ToDouble(gTagTotFlow.vntTagVal) * intTimeConv * dblDltTime/100);
+
+
+        }
+
+        private void LogStnUpdateTim(int intBldrIdx, double?[] arStationsDone)
+        {
+            // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+            // for stations processed up to this point in the current Blend Monitor program cycle
+            int intI;
+            int intJ;
+            // TODO: On Error GoTo Warning!!!: The statement is not translatable 
+            //UBound(arStationsDone)
+            for (intI = 0; (intI <= arStationsDone.Max()); intI++)
+            {
+                if ((arStationsDone[intI] > 0))
+                {
+                    //UBound(gArStnValTime[intBldrIdx].arKey)
+                    for (intJ = 0; (intJ <= gArStnValTime[intBldrIdx].arKey.Max()); intJ++)
+                    {
+                        if ((gArStnValTime[intBldrIdx].arKey[intJ] == arStationsDone[intI]))
+                        {
+                            gArStnValTime[intBldrIdx].arValueTime[intJ] = DateTime.Now;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return;
+        }
+        // JO - April 04: Get the prev stations vols from blend stations
+        private async Task<double> GetOrgStationVols(double blendId, double matId, double? curLineupId, double dblTotalStationVol)
+        {            
+            double? dblAddStationVol = 0;           
+
+            // get the Stations that have the sume of act_setpoint<>0 for a single material           
+            dblAddStationVol = await _repository.GetAddStationVol(blendId, matId, curLineupId);
+
+            if(dblAddStationVol == null)
+            {
+                dblAddStationVol = 0;
+            } else if(dblAddStationVol > 0)
+            {
+                dblTotalStationVol = dblTotalStationVol + Convert.ToDouble(dblAddStationVol);
+            }
+                       
+            // Pass the total station vol back to the procedure
+            return dblTotalStationVol;           
+        }
+
+        // ************* GetVolConvFactor *************
+        private async Task<double?> GetVolConvFactor(double lngBlendId, int intPrdgrpID, int intProductId, int intAdditiveId)
+        {
+            string strPrdgrpInits;
+            string strAddInits;
+            double? rtnData = 0;
+            // TODO: On Error GoTo Warning!!!: The statement is not translatable 
+            List<PrdgrpVolFactor> PrdgrpVolFactorData = await _repository.GetPrdgrpVolFactor(intPrdgrpID, intProductId, intAdditiveId);
+            
+            if (PrdgrpVolFactorData.Count() > 0)
+            {
+                rtnData = PrdgrpVolFactorData[0].UnitFactor;
+            }
+            else
+            {
+                strPrdgrpInits = PrdgrpVolFactorData[0].PrdgrpVolUnits;
+                strAddInits = PrdgrpVolFactorData[0].AddVolUnits;
+                // Volume conversion factor does not exist from additive units ^1 to blend volume units ^2
+                var res = "";
+                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN91), programName, "BL-" + lngBlendId, strAddInits, strPrdgrpInits,
+                    "", "", "", "", res);
+
+                rtnData = 1;
+            }
+            return rtnData;
+        }
+        // *********** ModelLocal ***********
+
+
+        // call GAMS to do recipe or line property calculations
+        // For OPTIMIZE mode, vntData is run ID for the optimizer run
+        // For LINEPROP mode, vntData is a 1-D array of interval comp vols
+        // JO - intIntNum: holds the StartInterval for composite samples.   A new parameter has been added to
+        // intStopInterval (optional): holds the StopInterval for composite/spot samples, which is used to get the range of sample intervals
+        public async void ModelLocal(GAMSCalcTypes enumCalcType, double lngBlendId, int intIntvNum, double[] vntData, DebugLevels enumDebugLevel, int? intStopInterval,RetStatus gintOptResult)
+        {           
+            // TODO: On Error GoTo Warning!!!: The statement is not translatable 
+            if (enumDebugLevel == DebugLevels.High)
+            {
+                // LOG: msg "**** Entering Model_Local ****"
+            }            
+            
+            string gstrOptEngine = await _repository.GetOptEngine();
+            string gstrSBPath = "";
+            string gstrModelDir = "";
+            string gstrOutputDir = "";
+            string gstrInputDir = "";
+            string gstrErrorDir = "";
+
+            List<string> Data = await _repository.GetSBPath();
+            if (Data.Count() > 0)
+            {
+                gstrSBPath = (Data[0] ==null)?"C:\\SB35": Data[0];
+                gstrModelDir = (gstrSBPath + cstrModelDir);
+                gstrInputDir = (gstrSBPath + cstrInputDir);
+                gstrOutputDir = (gstrSBPath + cstrOutputDir);
+                gstrErrorDir = (gstrSBPath + cstrErrorDir);
+            }
+            else
+            {
+                gstrSBPath = "C:\\SB35";
+                gstrModelDir = ("C:\\SB35" + cstrModelDir);
+                gstrInputDir = ("C:\\SB35" + cstrInputDir);
+                gstrOutputDir = ("C:\\SB35" + cstrOutputDir);
+                gstrErrorDir = ("C:\\SB35" + cstrErrorDir);
+            }            
+
+            //if (enumCalcType == GAMSCalcTypes.LINEPROP && ! vntData.IsArray)
+            //{
+            //    Err.Description = ("Argument vntData for ModelLocal() must be " + "array for line prop calc");
+            //    Err.Raise;
+            //    (vbObjectError + 1000);
+            //}
+
+            //if ((enumCalcType != GAMSCalcTypes.OPTIMIZE) && (enumCalcType != GAMSCalcTypes.LINEPROP))
+            //{
+            //    Err.Description = "Unknown GAMS calc type. Must be OPTIMIZE(= 0) or LINEPROP(= 2)";
+            //    Err.Raise;
+            //    (vbObjectError + 1000);
+            //}
+
+            // Partha - create the error dir if it doesn't exist - 11/17/2000
+            CreateDir(gstrErrorDir)
+            GAMSIntface enumCalcType, lngBlendId,intIntvNum,vntData,enumDebugLevel,intStopInterval;
+            //// JO - Jan. 19, 04: opt result is required then pass the FAILURE/SUCCESS flag
+            //if (gintOptResult == RetStatus.FAILURE)
+            //{
+            //    gintOptResult = gArOptSoluStats(enumCalcType);
+            //}
+
+            return;        
+        }
+
+        private async Task<double> ChkIntBiasCalcCurr(string strBiasCalcCurrent, int intStartInterval, double lngBlendId, double lngPropID, int intStopInterval = 0)
+        {           
+            string strWhereSeq;
+            string strBiasType;
+            // TODO: On Error GoTo Warning!!!: The statement is not translatable            
+            strWhereSeq = "";
+            double rtrnData = -1;
+            List<AbcBlendIntervalProps> BiasCalData = new List<AbcBlendIntervalProps>();
+            if ((intStopInterval != 0))
+            {                
+                BiasCalData =  await _repository.GetBiasCalData1(lngBlendId, lngPropID, intStartInterval, intStopInterval);
+            }
+            else
+            {
+                BiasCalData = await _repository.GetBiasCalData2(lngBlendId, lngPropID, intStartInterval, intStopInterval);
+            }
+
+            foreach (AbcBlendIntervalProps BiasCalDataObj in BiasCalData)
+            {
+                // find the interval bias calc current = SPOT/COMPOsite to return that interval.  If the it is
+                // ANALYZER or NOCALC, then return the last found SPOT/COMPOsite
+                strBiasType = (BiasCalDataObj.BiascalcCurrent==null)?"": BiasCalDataObj.BiascalcCurrent;
+                if ((strBiasCalcCurrent != ""))
+                {
+                    if ((strBiasType == strBiasCalcCurrent))
+                    {
+                        // return the last maching interval
+                        rtrnData = BiasCalDataObj.Sequence;
+                        if ((strBiasCalcCurrent == "SPOT"))
+                        {
+                            // Pass the first interval found
+                            break; //Warning!!! Review that break works as 'Exit Do' as it could be in a nested instruction like switch
+                        }
+
+                    }
+
+                    // In the given range at least one interval has to match the specified calc current type.
+                    // pass the first found, if not found pass NULL_
+                }
+                else if ((strBiasType == "COMPOSITE") || (strBiasType == "SPOT"))
+                {
+                    // return the last maching interval
+                    rtrnData = BiasCalDataObj.Sequence;
+                }
+                else
+                {
+                    // if at least one interval do not match leave and pass the last
+                    // matching interval
+                    break; //Warning!!! Review that break works as 'Exit Do' as it could be in a nested instruction like switch
+                }               
+            }
+            return rtrnData;
+        }
+
+        //Check if sample property was previuosly used for bias calc
+        private async Task<bool> CheckSPUsed(double lngBlendId, double lngPropID, string strUsedFlag, int intStartIntv, bool bln1stBias, string strBiasCalc)
+        {           
+            int? intMatchingIntv;
+            // TODO: On Error GoTo Warning!!!: The statement is not translatable            
+            // check if sample property was ever used in this blend
+            int count = await _repository.CheckPropertyUsed(lngBlendId, lngPropID, strUsedFlag);
+            bool rtrData = false;
+            if (count > 0)
+            {
+                rtrData = true;
+            }
+            else if (bln1stBias)
+            {
+                rtrData = bln1stBias;
+                if ((strBiasCalc != "REG"))
+                {
+                    // if property was never used in this blend, then check if biasCalc is SPOT or COMPOSITE
+                    // to define how far we should go back for the first bias update
+                    intMatchingIntv = null;
+                    // find out how many intervals have the same BiasCalc_current (SPOT/COMPOSITE) from the start interval until
+                    // the first blend interval (Desc)
+                    // strCurBiasType="", means that at this point function will return any intervals where biascalc_type=COMPOSITE or SPOT
+                    intMatchingIntv = (int) await ChkIntBiasCalcCurr("", intStartIntv, lngBlendId, lngPropID);
+                    if ((intMatchingIntv >= 0))
+                    {
+                        // Reset 1st bias calc for sample prop that has not been used
+                        rtrData = false;
+                    }
+                }
+            }
+            else
+            {
+                rtrData = bln1stBias;
+            }
+
+            return rtrData;
+        }
+
+        private async void CalcBias(int intBldrIdx,List<AbcBlenders> vntBldrsData, CurBlendData curblend, DebugLevels enumDebugLevel,string strIntBiasType,string strSampleName= "", 
+            int intStartInterval = 0,int intStopInterval = 0,int intMatchIntv = 0)
+        { 
+            int vntIntvNum;
+            double vntPropID;
+            // , vntIntBiasCur As Variant
+            double sngAnzOfst;
+            double sngBiasFilt;
+            double sngFbPredBias;
+            double sngAnzRes;
+            double sngFdbkPred;
+            double sngBias;
+            object vntMinBias;
+            object vntMaxBias;
+            string strModelErrExists;
+            string strModelErrClrd ="";
+            double dblIntBiasNew;
+            double dblIntBias;
+            double dblRateLimit;
+            double dblUnfilBias;
+            double dblBiasClamp;
+            string strPropAlias = "";
+            string strPropName = "";
+            string strPropUnit= "";
+            bool blnCopyLineprop;
+            float sngCorrellBias;
+            // JO - Aug, 03: Sample composite/spot declaration
+            int intPropIndex;
+            int intMatchingIntv;
+            int intNprops;
+            string strBiasCalcCurrent;
+            string strFallbackProps;
+            string strSampleType;
+            string strUserFallbackType;
+            string strUserCalcType;
+            string strCalcBiasFallBack;
+            double sngSampleRes;
+            long lngPropID;
+            bool blnFirstBias;
+            int intTimeDiff;
+            int intNRec;
+            var res = "";
+            // TODO: On Error GoTo Warning!!!: The statement is not translatable 
+
+            if (enumDebugLevel == DebugLevels.High)
+            {
+                res = "";
+                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG4), programName, cstrDebug, curblend.strName, "CALC_BIAS",
+                    "", "", "", "", res);                
+            }
+            List<double> BlendIntPropsList = await _repository.GetBlendIntProps(curblend.lngID, vntBldrsData[intBldrIdx].PrdgrpId);
+            intNprops = BlendIntPropsList.Count();
+            if (gblnBiasRedimDone[intBldrIdx] == false) {
+                if (Information.UBound(gblnFirstBiasCalc, 2) < (intNprops - 1)){
+                    //'prop index will be base 0
+                    // ReDim Preserve gblnFirstBiasCalc(Information.UBound(vntBldrsData, 2), 0 To(intNprops - 1))
+
+                    //--------------debug--------------------//
+                   // Array.Resize(ref gblnFirstBiasCalc[Information.UBound(vntBldrsData, 2)], intNprops - 1);
+                }
+            }
+
+            intPropIndex = -1; //'prop index will be base 0
+            strFallbackProps = "";
+            //'Loop of all blend interval props
+            foreach (var BlendIntProp in BlendIntPropsList)
+            {
+                intPropIndex = intPropIndex + 1;
+                vntPropID = BlendIntProp;
+                List<BldSampleProps> BldSamplePropsList = new List<BldSampleProps>();
+                if ((gblnBiasRedimDone[intBldrIdx] == false && gProjDfs.strAllowSCSampling == "YES") || (strIntBiasType != "REG" && gProjDfs.strAllowSCSampling == "YES")) {
+                    //'if the first bias has already been calculated, then check if the bias calc type
+                    //'has changed from Analyzer to COM or SPOT.  If that is the case, then reset this flag
+                    //'to allow bias update all the way to first interval
+                    //'Check if sample prop bias was calculated in the past
+                    gblnFirstBiasCalc[intBldrIdx, intPropIndex] = await CheckSPUsed(curblend.lngID, vntPropID, "YES", intStartInterval, gblnFirstBiasCalc[intBldrIdx, intPropIndex], strIntBiasType);
+                }
+
+                if (strIntBiasType == "COM" || strIntBiasType == "SPO")
+                {
+                    BldSamplePropsList = await _repository.GetBldSampleProps(curblend.lngID, strSampleName);
+                    intNRec = BldSamplePropsList.Count();
+                    if (intNRec > 0)
+                    {
+                        List<BldSampleProps> BldSamplePropsListFltrd = BldSamplePropsList.Where<BldSampleProps>(row => row.PropId == vntPropID).ToList();
+
+                        if (BldSamplePropsListFltrd.Count > 0)
+                        {
+                            // Set vntPropID = ABCdataEnv.rscomGetBldSampleProps.Fields("VALUE")
+                            // sngFdbkPred = NVL(ABCdataEnv.rscomGetBldSampleProps.Fields("FEEDBACK_PRED").Value, 0)
+                            // Set flag to copy lineprop folder when bias is outside of a valid range
+                            blnCopyLineprop = true;
+                            vntIntvNum = intStartInterval;
+                            // Set vntPropID = ABCdataEnv.rscomGetBldSampleProps.Fields("PROP_ID")
+                            // get the interval sample prop data.  The matching interval(where COMPOSITE or SPOT data exist) is used
+                            // to get the fb pred, bias and so on.
+                            List<SampleIntvProps> SampleIntvPropsList = await _repository.GetSampleIntvProps(curblend.lngID, intMatchIntv, vntPropID, vntBldrsData[intBldrIdx].PrdgrpId);
+
+                            if (SampleIntvPropsList.Count() > 0)
+                            {
+                                strBiasCalcCurrent = (SampleIntvPropsList[0].BiascalcCurrent == null) ? "ANALYZER" : SampleIntvPropsList[0].BiascalcCurrent;
+                                switch (strBiasCalcCurrent)
+                                {
+                                    case "COMPOSITE":
+                                    case "SPOT":
+                                        sngFdbkPred = (SampleIntvPropsList[0].FeedbackPred == null) ? -1 : Convert.ToDouble(SampleIntvPropsList[0].FeedbackPred);
+                                        sngFbPredBias = (SampleIntvPropsList[0].FbPredBias == null) ? 0 : Convert.ToDouble(SampleIntvPropsList[0].FbPredBias);
+                                        sngSampleRes = (BldSamplePropsList[0].Value == null) ? -1 : Convert.ToDouble(BldSamplePropsList[0].Value);
+                                        if ((strBiasCalcCurrent == "COMPOSITE"))
+                                        {
+                                            sngBiasFilt = (SampleIntvPropsList[0].CompositeFilter == null) ? 0 : Convert.ToDouble(SampleIntvPropsList[0].CompositeFilter);
+                                            dblBiasClamp = (SampleIntvPropsList[0].CompositeBiasClamp == null) ? -1 : Convert.ToDouble(SampleIntvPropsList[0].CompositeBiasClamp);
+                                        }
+                                        else
+                                        {
+                                            // SPOT
+                                            sngBiasFilt = (SampleIntvPropsList[0].SpotFilter == null) ? 0 : Convert.ToDouble(SampleIntvPropsList[0].SpotFilter);
+                                            dblBiasClamp = (SampleIntvPropsList[0].SpotBiasClamp == null) ? -1 : Convert.ToDouble(SampleIntvPropsList[0].SpotBiasClamp);
+                                        }
+
+                                        // Sample_res and the Feedback_pred should be NOT NULL
+                                        if (sngFdbkPred == -1 || sngSampleRes == -1)
+                                        {
+                                            goto NEXTPROP;
+                                        }
+
+                                        // Get The property units name for Viscosity
+                                        // In the near future this function will be implemented for all props
+                                        List<PropNameModel> PropNameData = await _repository.GetPropName(vntPropID);
+
+                                        if (PropNameData.Count() > 0)
+                                        {
+                                            strPropName = PropNameData[0].PropName;
+                                            strPropUnit = PropNameData[0].UnitsName;
+                                        }
+
+                                        if (strPropName == "D_VISC" || strPropName == "F_VISC")
+                                        {
+                                            if ((strPropName == "D_VISC"))
+                                            {
+                                                // vntPropID   D_VISC
+                                                // Convert the Fb predicted and anz result to same CST for viscosity
+                                                sngFdbkPred = await _repository.GetConvValue(sngFdbkPred, strPropUnit, "CST@40C");
+                                                sngSampleRes = await _repository.GetConvValue(sngSampleRes, strPropUnit, "CST@40C");
+                                            }
+                                            else if ((strPropName == "F_VISC"))
+                                            {
+                                                // vntPropID  F_VISC
+                                                // Convert the Fb predicted and anz result to same CST for viscosity
+                                                sngFdbkPred = await _repository.GetConvValue(sngFdbkPred, strPropUnit, "CST@50C");
+                                                sngSampleRes = await _repository.GetConvValue(sngSampleRes, strPropUnit, "CST@50C");
+                                            }
+
+                                        }
+
+                                        // calc new pure composite/spot bias
+                                        dblIntBiasNew = (sngSampleRes
+                                                    - (sngFdbkPred - sngFbPredBias));
+                                        dblUnfilBias = dblIntBiasNew;
+                                        if (dblBiasClamp == -1)
+                                        {
+                                            dblBiasClamp = dblUnfilBias;
+                                        }
+
+                                        if (Math.Abs(dblUnfilBias) > Math.Abs(dblBiasClamp))
+                                        {
+                                            // clamp to min bias and set abc_blend_intervals.unfilt_bias
+                                            // Ensure that sign of bias clamp has no effect
+                                            dblUnfilBias = Math.Abs(dblBiasClamp) * dblUnfilBias / Math.Abs(dblUnfilBias);
+                                        }
+
+                                        intMatchingIntv = -1;
+                                        // find the interval range where the bias will be updated (interval range between stopinterval and
+                                        // current closed interval (currIntvl -1))
+                                        // JO/KA/NL - Jan. 20, 04: Comment out BiasOverrideFlag
+                                        //                                 If curblend.strBiasOverrideFlag = "NO" Then
+                                        // check if all intervals have the same BiasCalc_current. strCurBiasType="", means that at this point
+                                        // function will return any intervals where biascalc_type=COMPOSITE or SPOT
+                                        intMatchingIntv = (int)await ChkIntBiasCalcCurr("", intStopInterval, curblend.lngID, vntPropID, (curblend.intCurIntv - 1));
+                                        // If no records found, then update only the range of composite/spot intervals
+                                        // Note: the range of intervals where the composite/spot was allocated will be updated, only
+                                        // for those intervals where the CurrentCalc_type is  "COMPOSITE" or "SPOT"
+                                        if ((intMatchingIntv == -1))
+                                        {
+                                            // setting the intMatchingIntv = intStopInterval allows update between start and stop intervals only
+                                            intMatchingIntv = intStopInterval;
+                                        }
+
+                                        // If intMatchingIntv = Curr intvl - 1, then update bias all the way to last interval (forward)
+                                        if ((intMatchingIntv
+                                                    >= (curblend.intCurIntv - 1)))
+                                        {
+                                            intMatchingIntv = curblend.intCurIntv;
+                                        }
+
+                                        if (intMatchingIntv != -1)
+                                        {
+                                            // Save pure (or clamping bias) in DB (abc_blend_intervals.unfilt_bias)
+                                            // exclude ANALYZER/SPOT calc_curr_types
+                                            await _repository.setUnfiltBias(dblUnfilBias, curblend.lngID, vntPropID, vntIntvNum, intStopInterval, intMatchingIntv);
+                                        }
+
+                                        List<double> PrevIntBiasData = await _repository.GetPrevIntBias(curblend.lngID, (vntIntvNum - 1), vntPropID);
+
+                                        sngBias = 0;
+                                        if (PrevIntBiasData.Count > 0)
+                                        {
+                                            sngBias = PrevIntBiasData[0];
+                                        }
+
+                                        // JO - Aug, 03: if this is the first time bias is being calc for this prop, then
+                                        // skip filtering
+                                        blnFirstBias = false;
+                                        if ((gblnFirstBiasCalc[intBldrIdx, intPropIndex] == true))
+                                        {
+                                            // Filter the pure Bias
+                                            dblIntBias = ((sngBias * sngBiasFilt)
+                                                        + (dblIntBiasNew * (1 - sngBiasFilt)));
+                                        }
+                                        else
+                                        {
+                                            // set this flag to true for the rest of the blend for this prop since first time bias was already processed
+                                            gblnFirstBiasCalc[intBldrIdx, intPropIndex] = true;
+                                            dblIntBias = dblIntBiasNew;
+                                            blnFirstBias = true;
+                                        }
+
+                                        if (enumDebugLevel >= DebugLevels.Medium)
+                                        {
+                                            strPropAlias = await _repository.GetPropAlias((int)vntPropID);
+
+                                            if (enumDebugLevel == DebugLevels.Medium)
+                                            {
+                                                res = "";
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG35), programName, cstrDebug, curblend.strName, strPropAlias,
+                                                    dblIntBiasNew.ToString(), dblIntBias.ToString(), "", "", res);
+                                            }
+                                            else
+                                            {
+                                                res = "";
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG36), programName, cstrDebug, curblend.strName, strPropAlias,
+                                                    sngSampleRes.ToString(), sngFdbkPred.ToString(), dblIntBiasNew.ToString(), sngBias.ToString(), res);
+
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG40), programName, cstrDebug, curblend.strName, strPropAlias,
+                                                    sngBiasFilt.ToString(), dblIntBias.ToString(), "", "", res);
+                                            }
+
+                                        }
+
+                                        if (Math.Abs(dblIntBias) > Math.Abs(dblBiasClamp))
+                                        {
+                                            strPropAlias = await _repository.GetPropAlias((int)vntPropID);
+
+                                            res = "";
+                                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN95), programName, "BL-" + curblend.lngID, curblend.strName, strPropAlias,
+                                                Math.Round(Math.Abs(dblIntBias), 3).ToString(), Math.Abs(dblBiasClamp).ToString(), Math.Abs(dblBiasClamp).ToString(), "", res);
+
+                                            // clamp to min bias and set ABC_BLEND_PROPS.MODEL_ERR_EXISTS_FLAG to YES
+                                            // Ensure that sign of bias clamp has no effect
+                                            dblIntBias = (Math.Abs(dblBiasClamp) * (dblIntBias / Math.Abs(dblIntBias)));
+                                            strModelErrExists = "YES";
+                                            await _repository.SetModelErrExistsFlag("YES", curblend.lngID, vntPropID);
+                                        }
+                                        else
+                                        {
+                                            // set ABC_BLEND_PROPS.MODEL_ERR_CLRD.FLAG to YES if
+                                            // MODEL_ERR_EXISTS_FLAG is YES
+                                            // also set ABC_BLEND_PROPS.MODEL_ERR_EXISTS_FLAG to NO
+                                            strModelErrExists = "NO";
+                                            await _repository.SetModelErrClrdFlag(curblend.lngID, vntPropID);
+                                        }
+
+                                        if (enumDebugLevel >= DebugLevels.Medium)
+                                        {
+                                            res = "";
+                                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG37), programName, cstrDebug, curblend.strName, strPropAlias,
+                                                dblIntBias.ToString(), (0).ToString(), dblBiasClamp.ToString(), "", res);
+
+                                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG38), programName, cstrDebug, curblend.strName, strPropAlias,
+                                               strModelErrExists, strModelErrClrd, "", "", res);
+
+                                        }
+
+                                        // save new interval prop bias to this and all sub sebsequent intervals
+                                        dblIntBias = Math.Round(dblIntBias, 10);
+                                        // if bias_override flag is set to YES, then update bias all the way to first interval
+                                        // JO/KA/NL - Jan. 20, 04: Comment out BiasOverrideFlag
+                                        //                                 If curblend.strBiasOverrideFlag = "NO" Then
+                                        // find out how many intervals have the same BiasCalc_current (SPOT/COMPOSITE) between stopInterval and curblend.intCurIntv - 1
+                                        // strCurBiasType="", means that at this point function will return any intervals where biascalc_type=COMPOSITE or SPOT
+                                        if (intMatchingIntv != -1)
+                                        {
+                                            await _repository.setBias(dblIntBias, curblend.lngID, vntPropID, vntIntvNum, intStopInterval, intMatchingIntv);
+
+                                            if ((intMatchingIntv >= curblend.intCurIntv))
+                                            {
+                                                intMatchingIntv = (curblend.intCurIntv - 1);
+                                            }
+
+                                            // if interval found matching the curr_bias_type=COMPOSITE/SPOT, then recalc LINEPROP up to that interval
+                                            if (((gintStartStopIntv[(int)StartStop.STRT] > vntIntvNum)
+                                                        || (gintStartStopIntv[(int)StartStop.STRT] == -1)))
+                                            {
+                                                gintStartStopIntv[(int)StartStop.STRT] = vntIntvNum;
+                                            }
+
+                                            if (((gintStartStopIntv[(int)StartStop.STP] < intMatchingIntv)
+                                                        || (gintStartStopIntv[(int)StartStop.STP] == -1)))
+                                            {
+                                                gintStartStopIntv[(int)StartStop.STP] = intMatchingIntv;
+                                            }
+
+                                            // JO - July , 2005: Make sure that start/stop intervals are valid
+                                            if ((gintStartStopIntv[(int)StartStop.STRT] > gintStartStopIntv[(int)StartStop.STP]))
+                                            {
+                                                gintStartStopIntv[(int)StartStop.STP] = gintStartStopIntv[(int)StartStop.STRT];
+                                            }
+
+                                        }
+
+                                        // If we are here, then it is because the sample prop had the USED_flag='NO'.
+                                        // If at least one prop satisfy these conditions, then the calc Bias should be updated
+                                        // all the way to specified interval along with LINEPROP. Check if biascalc_current for the
+                                        // StartInterval is equal to all previous intervals
+                                        // A global var containing the start/stop intervals will be passed back to perform (recalc) Lineprop for those intervals
+                                        if ((blnFirstBias == true))
+                                        {
+                                            intMatchingIntv = -1;
+                                            // JO/KA/NL - Jan. 20, 04: Comment out BiasOverrideFlag
+                                            //                                     'if bias_override flag is set to YES, then update bias all the way to first interval
+                                            //                                     If curblend.strBiasOverrideFlag = "NO" Then
+                                            // find out how many intervals have the same BiasCalc_current (SPOT/COMPOSITE) from the start interval until
+                                            // the first blend interval (Desc)
+                                            // strCurBiasType="", means that at this point function will return any intervals where biascalc_type=COMPOSITE or SPOT
+                                            intMatchingIntv = (int)await ChkIntBiasCalcCurr("", vntIntvNum, curblend.lngID, vntPropID);
+                                            if ((intMatchingIntv >= 0))
+                                            {
+                                                // update BiasCalc_current all the way to the found interval matching biasCalc Current COMPOSITE/SPOT
+                                                await _repository.setBiasAndUnfiltBias(dblIntBias, dblUnfilBias, curblend.lngID, vntPropID, vntIntvNum, intMatchingIntv);
+
+                                                // For interval zero, there is not need to recalculate anything
+                                                if (intMatchingIntv == 0)
+                                                {
+                                                    intMatchingIntv = 1;
+                                                }
+
+                                                if ((gintStartStopIntv[(int)StartStop.STRT] > intMatchingIntv))
+                                                {
+                                                    gintStartStopIntv[(int)StartStop.STRT] = intMatchingIntv;
+                                                }
+
+                                                if ((gintStartStopIntv[(int)StartStop.STP] < intStopInterval))
+                                                {
+                                                    gintStartStopIntv[(int)StartStop.STP] = intStopInterval;
+                                                }
+
+                                            }
+                                        }
+
+                                        // update abc_blend_sample_props.USED_flag to "YES" to avoid further processing of this prop
+                                        await _repository.SetUsedFlag(curblend.lngID, vntPropID, strSampleName);
+
+                                        // Only the latest anzr value should be used for bias calc.
+                                        // The previous anzr values should be excluded once the current values are used in bias calc
+                                        // This query has been modified to update the Calc_Prop_flag to NO for a prop in intvs <= Current intvl
+                                        await _repository.SetIntCalcPropertyFlag(curblend.lngID, vntPropID, vntIntvNum);
+                                        break;
+                                    case "ANALYZER":
+                                        if (gProjDfs.strAllowSCSampling == "YES" && curblend.strState.Trim() != "PAUSED")
+                                        {
+                                            strCalcBiasFallBack = "";
+                                            if ((gArAnzDelay[intBldrIdx] != cdteNull))
+                                            {
+                                                // Compare the anzr_start_delay (optimizer_delay) with the current time
+                                                // get current time
+                                                gDteCurTime = await _repository.GetCurTime();
+
+                                                // get the time diff between the curr time  and the anz timer for processing (in minutes)
+                                                intTimeDiff = (int)DateAndTime.DateDiff("n", gArAnzDelay[intBldrIdx], gDteCurTime);
+                                                if (intTimeDiff > (2 * vntBldrsData[intBldrIdx].AnzrStartDelay))
+                                                {
+                                                    // calc sub CalcBiasFallBack to handle fallback if needed
+                                                    strCalcBiasFallBack = CalcBiasFallBack(strBiasCalcCurrent, vntBldrsData[intBldrIdx].Id, curblend, vntPropID, vntBldrsData[intBldrIdx].PrdgrpId);
+                                                }
+
+                                            }
+                                            else
+                                            {
+                                                // calc sub CalcBiasFallBack to handle fallback if needed
+                                                strCalcBiasFallBack = CalcBiasFallBack(strBiasCalcCurrent, vntBldrsData[intBldrIdx].Id, curblend, vntPropID, vntBldrsData[intBldrIdx].PrdgrpId);
+                                            }
+
+                                            if ((strCalcBiasFallBack != ""))
+                                            {
+                                                // if this function returns <>"" value, then log a msg and go to next prop
+                                                // This means that the a fallback was requested and it will be processed in the next cycle of BMon
+                                                // Create an array of props and log the msg only once for all props
+                                                List<PropNameModel> PropNameList = await _repository.GetPropName(vntPropID);
+
+                                                if (PropNameList.Count() > 0)
+                                                {
+                                                    strPropName = PropNameList[0].PropName;
+                                                }
+
+                                                strUserCalcType = "ANALYZER";
+                                                List<AbcTranstxt> TranstxtData1 = await _repository.GetTranstxtData("BIASCALCTYPE");
+                                                List<AbcTranstxt> TranstxtDataFltrd1 = TranstxtData1.Where<AbcTranstxt>(row => row.Value == strBiasCalcCurrent).ToList();
+
+                                                if (TranstxtDataFltrd1.Count() > 0)
+                                                {
+                                                    strUserCalcType = TranstxtDataFltrd1[0].UserValue;
+                                                }
+
+                                                strUserFallbackType = "NONE";
+
+                                                List<AbcTranstxt> TranstxtData2 = await _repository.GetTranstxtData("ANZFALLBACKTYPE");
+                                                List<AbcTranstxt> TranstxtDataFltrd2 = TranstxtData2.Where<AbcTranstxt>(row => row.Value == strCalcBiasFallBack).ToList();
+
+                                                if (TranstxtDataFltrd2.Count() > 0)
+                                                {
+                                                    strUserFallbackType = TranstxtDataFltrd2[0].UserValue;
+                                                }
+
+                                                // save the prop name to display a message after the prop loop
+                                                if ((strFallbackProps == ""))
+                                                {
+                                                    strFallbackProps = strPropName;
+                                                    // & ":" & strUserCalcType & "2" & strUserFallbackType
+                                                }
+                                                else
+                                                {
+                                                    strFallbackProps = (strFallbackProps + ("," + strPropName));
+                                                    // & ":" & strUserCalcType & "2" & strUserFallbackType
+                                                }
+
+                                            }
+
+                                        }
+
+                                        // strAllowSCSampling
+                                        break;
+                                    case "NOCALC":
+                                        break;
+                                }
+                                // Select Bias Calc Type
+                            }
+
+                        // Sample Interval prop
+                        NEXTPROP: { }
+                        }
+
+
+                        //ABCdataEnv.rscomGetBldSampleProps.MoveFirst;
+                    }
+
+                    // if not Blend Sample props
+                }
+                else
+                {
+
+                }
+
+
+            }
+        }
         private async void CalcBlend(int intBldrIdx, List<AbcBlenders> vntBldrsData, CurBlendData curblend, DebugLevels enumDebugLevel)
         {
             List<CompVolTids> vntCompsData;
             int intNComps;
             int intI;
-            int[] arStationId;
+            double?[] arStationId = new double?[0];
             int intNCompIndx;
-            object vntCurRcp;
-            object vntValQuality;
+            double? vntCurRcp;
+            string vntValQuality = "";
             DcsTag tagTotVol = new DcsTag();
             DcsTag tagWildFlag = new DcsTag();
-            string strReadEnabled;
-            string strScanEnabled;
-            string strScanGrpName;
+            string strReadEnabled = "";
+            string strScanEnabled = "";
+            string strScanGrpName = "";
             string strCompVolTidsOrgQuery;
             string strExecute;
             string strStationName;
@@ -1407,35 +2173,35 @@ namespace BlendMonitor.Service
             double dblNewVol;
             double[] arDltVol;
             double[] arDltStatVol;
-            double[] ardblStationCurRcp;
+            double?[] ardblStationCurRcp;
             double[] arCompIntVol;
             double dblTotCompIntVol;
-            double[] dblStationNewVol;
+            double[] dblStationNewVol = new double[0];
             double[] arCompBldVol;
             double dblTotCompBldVol;
             double dblIntCost;
             double dblBldCost;
-            double dblStationCurVol;
-            object vntCompIntVol;
-            object vntCompBldVol;
-            object vntActRcp;
-            object vntAvgRcp;
-            object vntCompCost;
-            double dblIntRcp;
-            double dblIntVol;
+            double dblStationCurVol = 0;
+            double? vntCompIntVol;
+            double? vntCompBldVol;
+            double? vntActRcp;
+            double? vntAvgRcp;
+            double? vntCompCost;
+            double dblIntRcp = 0;
+            double? dblIntVol=0;
             double dblTotalVol;
-            object vntValTime;
+            DateTime? vntValTime = new DateTime();
             double dblFeedbackPred;
             double dblStationActRcp;
             double dblTotStationVol;
             int intCompPropID;
-            int intStationNum;
+            int intStationNum= 0;
             int intNum;
             int intNStations;
             bool blnRollBack;
-            double lngCompLineupID;
-            double lngTotalStationVolTid;
-            double lngWildStationTid;
+            double? lngCompLineupID;
+            double? lngTotalStationVolTid;
+            double? lngWildStationTid;
             double? lngTotalCompFlowTid;
             double? lngScanGroupId;
             double? sngScanRate;
@@ -1445,29 +2211,29 @@ namespace BlendMonitor.Service
             int intTotNStations = 0;
             int intStationNumber;
             double[] arAddDltStatVol;
-            double[] dblAddStationNewVol;
+            double[] dblAddStationNewVol = new double[0];
             double[] arAddDltVol;
-            double dblAddTotalVol;
+            double dblAddTotalVol = 0;
             double[] arAddCompIntVol;
             double[] arAddCompBldVol;
-            double dblAddNewVol;
-            double dblAddTotCompIntVol;
-            double dblAddTotCompBldVol;
+            double dblAddNewVol = 0;
+            double dblAddTotCompIntVol = 0;
+            double dblAddTotCompBldVol = 0;
             double dblAddTotStationVol;
             double dblCompIntCost;
             double dblCompBldCost;
-            double dblAddIntCost;
-            double dblAddBldCost;
-            double dblVolConvFactor;
+            double dblAddIntCost = 0;
+            double dblAddBldCost = 0;
+            double? dblVolConvFactor;
             double dblSumVol;
             string strUsageName;
             string strRcpConstraintType;
             RetStatus gintOptResult;
             RetStatus intSampleResult;
-            string strMinMaxTimeTag ="";
+            string strMinMaxTimeTag = "";
             string strAggregateQuality;
-            object vntStations;
-            double[] arStationsDone;
+            List<double> vntStations = new List<double>();
+            double?[] arStationsDone;
             int intJ;
             var res = "";
 
@@ -1491,16 +2257,18 @@ namespace BlendMonitor.Service
                      "", "", "", res);
                 return;
             }
+            List<TotalStatVol> GetTotalStatVolData = new List<TotalStatVol>();
+            List<TotalCompVol> GetTotalCompVolData = new List<TotalCompVol>();
             if (gstrDownloadType == "STATION" || gstrDownloadType == "LINEUP")
             {
                 vntCompsData = await _repository.GetCompStatVolTids(curblend.lngID);
 
                 intNComps = vntCompsData.Count();
                 // Get all the total station Vol at once (Batch selection)
-                List<TotalStatVol> GetTotalStatVolData = await _repository.GetTotalStatVol(curblend.lngID, vntBldrsData[intBldrIdx].Id);                
+                GetTotalStatVolData = await _repository.GetTotalStatVol(curblend.lngID, vntBldrsData[intBldrIdx].Id);
                 if (GetTotalStatVolData.Count() > 0)
                 {
-                    intTotNStations = GetTotalStatVolData.Count();                    
+                    intTotNStations = GetTotalStatVolData.Count();
                     //  RW 28-Mar-2012 for PreemL PQ-19
                     //  Don't check difference between earliest and latest flow totaliser timestamps if ramping up or ramping down at end of blend
                     if (((curblend.strRampingActFlag == "NO") && (curblend.sngCurVol <= (curblend.sngTgtVol - vntBldrsData[intBldrIdx].StopOptVol))))
@@ -1520,16 +2288,16 @@ namespace BlendMonitor.Service
                                 dteMaxValTime = cdteNull;
                                 //                     'get the min and max tag times
                                 //                     GetMinMaxTagStationTimes curblend.lngID, vntBldrsData(BLDR_ID, intBldrIdx), dteMinValTime, dteMaxValTime
-                                MxMnValTime MxMnValTimeData = await _repository.GetMxMnValTime(curblend.lngID,vntBldrsData[intBldrIdx].Id);
-                                
+                                MxMnValTime MxMnValTimeData = await _repository.GetMxMnValTime(curblend.lngID, vntBldrsData[intBldrIdx].Id);
+
                                 if (MxMnValTimeData != null)
                                 {
-                                    dteMinValTime = (MxMnValTimeData.MinValTime == null)?cdteNull: Convert.ToDateTime(MxMnValTimeData.MinValTime);
+                                    dteMinValTime = (MxMnValTimeData.MinValTime == null) ? cdteNull : Convert.ToDateTime(MxMnValTimeData.MinValTime);
                                     dteMaxValTime = (MxMnValTimeData.MaxValTime == null) ? cdteNull : Convert.ToDateTime(MxMnValTimeData.MaxValTime);
                                 }
 
                                 sngDateMinMaxDiff = DateAndTime.DateDiff("s", dteMinValTime, dteMaxValTime);
-                                
+
                                 if ((sngDateMinMaxDiff > gProjDfs.dblTotalizerTimestampTolerance))
                                 {
                                     //  RW 28-Mar-2012 for PreemL PQ-19                                    
@@ -1539,25 +2307,25 @@ namespace BlendMonitor.Service
                                     //  Added RW 28-Mar-2012 for PreemL PQ-19
                                     //  Write message to Blend Monitor log containing min and max timestamps and tags
                                     List<TotalizerScanTimes> TotalizerScanTimesData = await _repository.GetTotalizerScanTimes(curblend.lngID, vntBldrsData[intBldrIdx].Id);
-                                    
+
                                     if (TotalizerScanTimesData.Count() > 0)
                                     {
                                         strMinMaxTimeTag = ("MIN=" + (TotalizerScanTimesData[0].ScanTime) + " " + TotalizerScanTimesData[0].TagName);
                                         //ABCdataEnv.rscmdGetTotalizerScanTimes.MoveLast;
-                                        strMinMaxTimeTag = strMinMaxTimeTag + ", MAX=" + (TotalizerScanTimesData[TotalizerScanTimesData.Count() -1].ScanTime + " " + TotalizerScanTimesData[TotalizerScanTimesData.Count() - 1].TagName);
+                                        strMinMaxTimeTag = strMinMaxTimeTag + ", MAX=" + (TotalizerScanTimesData[TotalizerScanTimesData.Count() - 1].ScanTime + " " + TotalizerScanTimesData[TotalizerScanTimesData.Count() - 1].TagName);
                                     }
 
                                     //  Write message
                                     Shared.ErrorLog("TOTALIZER VOLUME SCAN TIMES ARE NOT SYNCHRONIZED IN SCAN GROUP " + strScanGrpName + ", " + "BL-"
                                                 + curblend.lngID + ", " + strMinMaxTimeTag, true);
                                     gintSkipCycleBmon[intBldrIdx] = 1;
-                                                                       
+
                                     return;
-                                }                                
+                                }
                             }
 
                         }
-                        else if ((((gintSkipCycleBmon[intBldrIdx] == 1) || (gintSkipCycleBmon[intBldrIdx] == 2)) && 
+                        else if ((((gintSkipCycleBmon[intBldrIdx] == 1) || (gintSkipCycleBmon[intBldrIdx] == 2)) &&
                             (curblend.strState.Trim() != "PAUSED")))
                         {
                             // Get the Scan_Group_Id for one of the stations
@@ -1572,10 +2340,10 @@ namespace BlendMonitor.Service
                                 dteMaxValTime = cdteNull;
                                 //                     'get the min and max tag times
                                 //                     GetMinMaxTagStationTimes curblend.lngID, vntBldrsData(BLDR_ID, intBldrIdx), dteMinValTime, dteMaxValTime
-                                MxMnValTime MxMnValTimeData = await _repository.GetMxMnValTime(curblend.lngID,vntBldrsData[intBldrIdx].Id);
-                                
+                                MxMnValTime MxMnValTimeData = await _repository.GetMxMnValTime(curblend.lngID, vntBldrsData[intBldrIdx].Id);
+
                                 if (MxMnValTimeData != null)
-                                {                                                                      
+                                {
                                     dteMinValTime = (MxMnValTimeData.MinValTime == null) ? cdteNull : Convert.ToDateTime(MxMnValTimeData.MinValTime);
                                     dteMaxValTime = (MxMnValTimeData.MaxValTime == null) ? cdteNull : Convert.ToDateTime(MxMnValTimeData.MaxValTime);
                                 }
@@ -1599,7 +2367,7 @@ namespace BlendMonitor.Service
                                 else
                                 {
                                     gintSkipCycleBmon[intBldrIdx] = 0;
-                                }                                
+                                }
                             }
                             else
                             {
@@ -1620,15 +2388,15 @@ namespace BlendMonitor.Service
                 }
 
                 // Redim this variable
-                 dblStationNewVol = new double[intTotNStations];
-                 dblAddStationNewVol = new double[intTotNStations];
+                dblStationNewVol = new double[intTotNStations];
+                dblAddStationNewVol = new double[intTotNStations];
             }
             else
             {
-                vntCompsData = await _repository.GetCompVolTids(vntBldrsData[intBldrIdx].Id,curblend.lngID);
+                vntCompsData = await _repository.GetCompVolTids(vntBldrsData[intBldrIdx].Id, curblend.lngID);
                 intNComps = vntCompsData.Count();
                 // Get all the total station Vol at once (Batch selection)
-                List<TotalCompVol> GetTotalCompVolData = await _repository.GetTotalCompVol(curblend.lngID, vntBldrsData[intBldrIdx].Id);
+                GetTotalCompVolData = await _repository.GetTotalCompVol(curblend.lngID, vntBldrsData[intBldrIdx].Id);
                 if (GetTotalCompVolData.Count() > 0)
                 {
                     intTotNStations = GetTotalCompVolData.Count();
@@ -1761,6 +2529,1045 @@ namespace BlendMonitor.Service
             arAddCompBldVol = new double[(intNComps - 1)];
 
             //'initialize value time array for components on the blender, if neccessary
+            if (!gArCompValTime[intBldrIdx].blnArraySet)
+            {
+                gArCompValTime[intBldrIdx].arValueTime = new DateTime[(intNComps - 1)];
+                for (intI = 0; (intI
+                            <= (intNComps - 1)); intI++)
+                {
+                    gArCompValTime[intBldrIdx].arValueTime[intI] = cdteNull;
+                }
+
+                gArCompValTime[intBldrIdx].blnArraySet = true;
+            }
+
+            // Array to record the times when blend station current volumes are updated
+            // Initialize value time array for blend stations used by blender, if neccessary
+            if (!gArStnValTime[intBldrIdx].blnArraySet)
+            {
+                gArStnValTime[intBldrIdx].arValueTime = new DateTime[intTotNStations];
+                gArStnValTime[intBldrIdx].arKey = new double[intTotNStations];
+                // Store all blend station ids for associating times with stations
+                // This is necessary since the database is only updated for stations in the currently selected lineup                
+                List<AbcBlendStations> AllBldStationsData = await _repository.GetAllBldStations(curblend.lngID);
+                vntStations = AllBldStationsData.Select(row => row.StationId).ToList<double>(); // ABCdataEnv.rscomGetAllBldStations.GetRows(adGetRowsRest, adBookmarkFirst, "STATION_ID");
+                for (intI = 0; intI <= (intTotNStations - 1); intI++)
+                {
+                    gArStnValTime[intBldrIdx].arValueTime[intI] = cdteNull;
+                    gArStnValTime[intBldrIdx].arKey[intI] = vntStations[intI];
+                }
+
+                gArStnValTime[intBldrIdx].blnArraySet = true;
+            }
+
+            // calculate new volume, calculate comp interval and blend volumes,
+            // update comp interval volumes            
+            List<CompIntVols> CompIntVolsData = await _repository.CompIntVols(curblend.lngID, curblend.intCurIntv);
+            vntCompIntVol = CompIntVolsData[0].Volume;
+
+            CompBldData CompBld = await _repository.CompBldData(curblend.lngID);
+            vntCompBldVol = CompBld.Volume;
+            vntCurRcp = CompBld.CurRecipe;
+
+            dblNewVol = 0;
+            dblTotCompIntVol = 0;
+            dblTotCompBldVol = 0;
+            intStationNumber = 1;
+            // Array for recording blend stations that have been processed
+            arStationsDone = new double?[(intTotNStations - 1)];
+            blnRollBack = true;
+            for (intI = 0; intI < (intNComps - 1); intI++)
+            {
+                //'Set the total component vol to zero at the beginning of the processing
+                dblTotalVol = 0;
+                dblAddTotalVol = 0;
+                strRcpConstraintType = "";
+                //'BDS 6-Jun-2012 PQ-D0078 Initialize flag for aggregate data
+                //'quality of all station volume totalizer tags in the lineup
+                strAggregateQuality = "GOOD";
+                //'BDS 6-Jun-2012 PQ-D0078
+
+                if (gstrDownloadType == "STATION" || gstrDownloadType == "LINEUP")
+                {
+                    // Reset the new station vol to zero for new comps
+                    dblStationNewVol[intStationNumber] = 0;
+                    dblAddStationNewVol[intStationNumber] = 0;
+                    // Get the lineup id from abc_blend_sources
+                    lngCompLineupID = await _repository.GetBldLineupId(curblend.lngID, vntCompsData[intI].MatId);
+
+                    // get the Usage Name for the given blend Component
+                    strUsageName = await GetBldMatUsage(curblend.lngID, vntCompsData[intI].WildFlagTid);
+                    // JO - Dec. 03: Get component Rcp Constraint Type
+                    List<BldCompUsage> BldCompUsageData = await _repository.GetBldCompUsage(curblend.lngID, vntCompsData[intI].MatId);
+
+                    if (BldCompUsageData.Count() > 0)
+                    {
+                        strRcpConstraintType = BldCompUsageData[0].RcpConstraintType;
+                    }
+
+                    // Get all the stations having this component                   
+                    List<BldrStationsData> GetBldrStationsDataList = await _repository.GetBldrStationsData(lngCompLineupID, vntBldrsData[intBldrIdx].Id);
+
+                    intStationNum = 0;
+                    intNStations = GetBldrStationsDataList.Count();
+                    // redim the arrays
+                    arStationId = new double?[intNStations];
+                    ardblStationCurRcp = new double?[intNStations];
+                    arDltStatVol = new double[intNStations];
+                    arAddDltStatVol = new double[intNStations];
+
+                    for (int i = 0; i < intNStations; i++)
+                    {
+                        intStationNum = (intStationNum + 1);
+                        arStationId[intStationNum] = GetBldrStationsDataList[i].StationId;
+                        strStationName = GetBldrStationsDataList[i].StationName;
+                        lngWildStationTid = GetBldrStationsDataList[i].WildFlagTid;
+                        // Find the total vol station Tid for this station
+                        // get volume tag value for the component
+                        List<TotalStatVol> TotalStatVolObj = GetTotalStatVolData.Where<TotalStatVol>(row => row.StationId == arStationId[intStationNum]).ToList<TotalStatVol>();
+
+                        if (TotalStatVolObj.Count() > 0)
+                        {
+                            lngTotalStationVolTid = TotalStatVolObj[0].TotalStationVolTid;
+                            tagTotVol.vntTagName = TotalStatVolObj[0].TotalStationTag;
+                            tagTotVol.vntTagVal = TotalStatVolObj[0].ReadValue.ToString();
+                            vntValTime = TotalStatVolObj[0].ValueTime;
+                            vntValQuality = TotalStatVolObj[0].ValueQuality;
+                            strReadEnabled = TotalStatVolObj[0].ReadEnabledFlag;
+                            strScanEnabled = TotalStatVolObj[0].ScanEnabledFlag;
+                            strScanGrpName = TotalStatVolObj[0].ScanGroupName;
+                        }
+                        else
+                        {
+                            lngTotalStationVolTid = null;
+                        }
+
+                        if ((lngTotalStationVolTid == null))
+                        {
+                            // set BMON_MISSINGTAG to blender, skip calculation
+                            await _repository.SetBlenderErrFlag("BMON_MISSINGTAG", vntBldrsData[intBldrIdx].Id, "");
+
+                            // warn msg "Missing totalizer volume tag"
+                            res = "";
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN54), programName, "BL-" + curblend.lngID, vntCompsData[intI].Name, gstrBldrName, "",
+                                 "", "", "", res);
+                            return;
+                        }
+
+                        if (tagTotVol.vntTagVal != null)
+                        {
+                            // BDS 25-May-2012 PQ-D0075 Clamp the totalizer tag read value to zero if it is negative
+                            if ((Convert.ToInt32(tagTotVol.vntTagVal) < 0))
+                            {
+                                tagTotVol.vntTagVal = (0).ToString();
+                            }
+
+                            // BDS 25-May-2012 PQ-D0075
+                            if ((strUsageName != "ADDITIVE"))
+                            {
+                                dblTotalVol = (dblTotalVol + Convert.ToInt32(tagTotVol.vntTagVal));
+                            }
+                            else
+                            {
+                                dblAddTotalVol = (dblAddTotalVol + Convert.ToInt32(tagTotVol.vntTagVal));
+                            }
+
+                        }
+                        else if ((strUsageName != "ADDITIVE"))
+                        {
+                            dblTotalVol = dblTotalVol;
+                        }
+                        else
+                        {
+                            dblAddTotalVol = dblAddTotalVol;
+                        }
+
+                        if (vntCompBldVol == null)
+                        {
+                            vntCompBldVol = 0;
+                        }
+
+                        if (vntValQuality == "GOOD")
+                        {
+                            //                  'save current totalizer volume into ABC_BLEND_STATIONS.CUR_VOL
+                            //                  ABCdataEnv.cmdSetStationCurVol tagTotVol.vntTagVal, curblend.lngID, _
+                            //                      arStationId(intStationNum), vntCompsData(2, intI)
+                            if (enumDebugLevel >= DebugLevels.Low)
+                            {
+                                res = "";
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG41), programName, cstrDebug, curblend.strName, vntCompsData[intI].Name, strStationName, tagTotVol.vntTagVal,
+                                     vntValTime.ToString(), "", res);
+                                // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                // BDS 6-Jul-2012 PQ-D0074
+                            }
+
+                            if ((strReadEnabled == "NO"))
+                            {
+                                // warning msg "DCS tag ^1 reading disabled"
+                                res = "";
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN41), programName, "BL-" + curblend.lngID, "TOTALIZER STATION_VOL_TID", tagTotVol.vntTagName,
+                                    "", "", "", "", res);
+                                // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                // BDS 6-Jul-2012 PQ-D0074
+                            }
+
+                            if ((strScanEnabled == "NO"))
+                            {
+                                // warning msg "Scan group ^1 disabled"
+                                res = "";
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN42), programName, "BL-" + curblend.lngID, strScanGrpName, "TOTALIZER STATION_VOL_TID", tagTotVol.vntTagName,
+                                    "", "", "", res);
+                                // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                // BDS 6-Jul-2012 PQ-D0074
+                            }
+
+                            // get the Current vol stored in the DB of every station with this material
+                            AbcBlendStations GetBldStationsDataObj = await _repository.GetBldStationsData(curblend.lngID, vntCompsData[intI].MatId, arStationId[intStationNum]);
+
+                            dblStationCurVol = (GetBldStationsDataObj.CurVol == null) ? 0 : Convert.ToDouble(GetBldStationsDataObj.CurVol);
+                            ardblStationCurRcp[intStationNum] = GetBldStationsDataObj.CurSetpoint;
+
+                            if ((Convert.ToDouble(tagTotVol.vntTagVal) > dblStationCurVol) && (vntValQuality == "GOOD"))
+                            {
+                                if ((strUsageName != "ADDITIVE"))
+                                {
+                                    arDltStatVol[intStationNum] = (Convert.ToDouble(tagTotVol.vntTagVal) - dblStationCurVol);
+                                }
+                                else
+                                {
+                                    arAddDltStatVol[intStationNum] = (Convert.ToDouble(tagTotVol.vntTagVal) - dblStationCurVol);
+                                }
+
+                            }
+                            else if (Convert.ToDouble(tagTotVol.vntTagVal) == dblStationCurVol)
+                            {
+                                // warning msg "Totalizer vol unchaged on station ^1"
+                                if ((strUsageName != "ADDITIVE"))
+                                {
+                                    arDltStatVol[intStationNum] = 0;
+                                }
+                                else
+                                {
+                                    arAddDltStatVol[intStationNum] = 0;
+                                }
+
+                                // JO - Sep, 03: ZERO COMP RCP Handling
+                                // If a rcp is meant to be zero in the ABC, then skip msgs
+                                if ((strRcpConstraintType != "ZERO_OUT"))
+                                {
+                                    // Only issue msg on debug
+                                    if (enumDebugLevel >= DebugLevels.Low)
+                                    {
+                                        // warn msg "Totalizer vol unchanged"
+                                        // check this message if apply
+                                        res = "";
+                                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN55), programName, "BL-" + curblend.lngID, tagTotVol.vntTagVal, strStationName, "",
+                                            "", "", "", res);
+                                        // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                        LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                        // BDS 6-Jul-2012 PQ-D0074
+                                    }
+
+                                }
+
+                                // 1.0001 is a tolerance to avoid false messsages
+                                // BDS 11-May-2012 Tolerance increased by a factor of ten
+                                // ElseIf tagTotVol.vntTagVal * 1.0001 < dblStationCurVol Then
+                            }
+                            else if ((Convert.ToDouble(tagTotVol.vntTagVal) * 1.001) < dblStationCurVol)
+                            {
+                                // BDS 11-May-2012
+                                // warn msg "Totalizer vol less than previous vol"
+                                // BDS 6-Jun-2012 PQ-D0075 Prevent a message when the totalizer tag value is negative
+                                if (Convert.ToDouble(tagTotVol.vntTagVal) > 0)
+                                {
+                                    res = "";
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN57), programName, "BL-" + curblend.lngID, tagTotVol.vntTagVal, dblStationCurVol.ToString(), strStationName,
+                                        gstrBldrName, "", "", res);
+                                    // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                    LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                    // BDS 6-Jul-2012 PQ-D0074
+                                }
+
+                                // BDS 6-Jun-2012 PQ-D0074
+                                if ((ardblStationCurRcp[intStationNum] == null) && (strUsageName != "ADDITIVE"))
+                                {
+                                    // set BMON_BADVOLUME error to blender, skip calculation
+                                    await _repository.SetBlenderErrFlag("BMON_BADVOLUME", vntBldrsData[intBldrIdx].Id, "");
+
+                                    // BDS 6-Jun-2012 PQ-D0074 Message moved from before rollback to avoid database update
+                                    // warn msg "Null current recipe for comp ^1 in station ^2 "
+                                    res = "";
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN56), programName, "BL-" + curblend.lngID, strStationName, gstrBldrName, "",
+                                        "", "", "", res);
+                                    // BDS 6-Jun-2012 PQ-D0074
+                                    return;
+                                }
+
+                                // Call CHECK_STATION_VOLUME
+                                // BDS 6-Jul-2012 PQ-D0074 Calculate station volume change based on time of last update
+                                if ((strUsageName != "ADDITIVE"))
+                                {
+                                    arDltStatVol[intStationNum] = await ChkStnVol(intBldrIdx, vntBldrsData[intBldrIdx].PrdgrpId, ardblStationCurRcp[intStationNum], arStationId[intStationNum], enumDebugLevel);
+                                }
+                                else
+                                {
+                                    arAddDltStatVol[intStationNum] = await ChkStnVol(intBldrIdx, vntBldrsData[intBldrIdx].PrdgrpId, ardblStationCurRcp[intStationNum], arStationId[intStationNum], enumDebugLevel);
+                                }
+
+                                // BDS 6-Jul-2012 PQ-D0074
+                            }
+
+                            if ((strUsageName != "ADDITIVE"))
+                            {
+                                dblStationNewVol[intStationNumber] = (dblStationNewVol[intStationNumber] + arDltStatVol[intStationNum]);
+                            }
+                            else
+                            {
+                                dblAddStationNewVol[intStationNumber] = (dblAddStationNewVol[intStationNumber] + arAddDltStatVol[intStationNum]);
+                            }
+
+                        }
+                        else if ((tagTotVol.vntTagVal == null) || (vntValQuality == "BAD"))
+                        {
+                            // warning msg "Bad total vol tag ^1"
+                            res = "";
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN58), programName, "BL-" + curblend.lngID, tagTotVol.vntTagName, vntCompsData[intI].Name, gstrBldrName,
+                                "", "", "", res);
+                            // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                            LogStnUpdateTim(intBldrIdx, arStationsDone);
+                            // BDS 6-Jul-2012 PQ-D0074
+                        }
+
+                        // Get wild_flag_tid from abc_stations and write to abc_blend_comps.wild
+                        if ((lngWildStationTid != null))
+                        {
+                            // get value of wild_flag_tid                           
+                            AbcTags DataRes1 = await _repository.GetTagNameAndVal(lngWildStationTid);
+                            tagWildFlag.vntTagName = DataRes1.Name;
+                            tagWildFlag.vntTagVal = DataRes1.ReadValue.ToString();
+
+                            if (tagWildFlag.vntTagVal != null)
+                            {
+                                //  Update abc_blend_comps.wild
+                                await _repository.UpdateAbcBlendCompWild(curblend.lngID, vntCompsData[intI].MatId, tagWildFlag.vntTagVal);
+                            }
+
+                        }
+
+                        // save current totalizer volume into ABC_BLEND_STATIONS.CUR_VOL
+                        await _repository.SetStationCurVol(tagTotVol.vntTagVal, curblend.lngID, arStationId[intStationNum], vntCompsData[intI].MatId);
+                        // save the the abc_blend_stations.CUR_VOL in abc_blend_stations.PREV_VOL
+                        await _repository.SetStationPrevVol(dblStationCurVol.ToString(), curblend.lngID, arStationId[intStationNum], vntCompsData[intI].MatId);
+                        //  ************
+                        // BDS 6-Jul-2012 PQ-D0074 Add blend station to list of stations processed
+                        for (intJ = 0; intJ <= (intTotNStations - 1); intJ++)
+                        {
+                            if (arStationsDone[intJ] == 0)
+                            {
+                                arStationsDone[intJ] = arStationId[intStationNum];
+                                break;
+                            }
+
+                        }
+
+                        // BDS 6-Jul-2012 PQ-D0074
+                        // BDS 6-Jun-2012 PQ-D0078 Record bad data quality of totalizer tag in lineup
+                        if (vntValQuality == null || vntValQuality == "BAD")
+                        {
+                            strAggregateQuality = "BAD";
+                        }
+
+                        intStationNumber = (intStationNumber + 1);
+                    }
+
+                    // BDS 6-Jun-2012 PQ-D0078 Record aggregate data quality of volume totalizer tags in lineup
+                    vntValQuality = strAggregateQuality;
+                    // BDS 6-Jun-2012 PQ-D0078
+                    // JO - April 04: Handling switching of multiple stations in active/paused mode
+                    // check for previous lineup (stations) and add those stored volumes to the current total station vol
+                    // call function to get prev vol
+                    if ((strUsageName != "ADDITIVE"))
+                    {
+                        dblTotalVol = await GetOrgStationVols(curblend.lngID, vntCompsData[intI].MatId, lngCompLineupID, dblTotalVol);
+                    }
+                    else
+                    {
+                        dblAddTotalVol = await GetOrgStationVols(curblend.lngID, vntCompsData[intI].MatId, lngCompLineupID, dblAddTotalVol);
+                    }
+                }
+                else
+                {
+                    // JO - Dec. 03: Get component Rcp Constraint Type
+                    List<BldCompUsage> BldCompUsageList = await _repository.GetBldCompUsage(curblend.lngID, vntCompsData[intI].MatId);
+
+                    if (BldCompUsageList.Count() > 0)
+                    {
+                        strRcpConstraintType = BldCompUsageList[0].RcpConstraintType;
+                    }
+
+                    // Find the total comp vol Tid for this comp
+                    // get volume tag value for the component
+
+                    List<TotalCompVol> GetTotalCompVolDataFltr = GetTotalCompVolData.Where<TotalCompVol>(row => row.MatId == vntCompsData[intI].MatId).ToList<TotalCompVol>();
+
+                    if (GetTotalCompVolDataFltr.Count() > 0)
+                    {
+                        lngTotalCompFlowTid = GetTotalCompVolDataFltr[0].TotCompVolTid;
+                        tagTotVol.vntTagName = GetTotalCompVolDataFltr[0].TotalCompTag;
+                        tagTotVol.vntTagVal = GetTotalCompVolDataFltr[0].ReadValue.ToString();
+                        vntValTime = GetTotalCompVolDataFltr[0].ValueTime;
+                        vntValQuality = GetTotalCompVolDataFltr[0].ValueQuality;
+                        strReadEnabled = GetTotalCompVolDataFltr[0].ReadEnabledFlag;
+                        strScanEnabled = GetTotalCompVolDataFltr[0].ScanEnabledFlag;
+                        strScanGrpName = GetTotalCompVolDataFltr[0].ScanGroupName;
+                    }
+                    else
+                    {
+                        lngTotalCompFlowTid = null;
+                    }
+
+                    if ((lngTotalCompFlowTid == null))
+                    {
+                        // set BMON_MISSINGTAG to blender, skip calculation
+                        await _repository.SetBlenderErrFlag("BMON_MISSINGTAG", vntBldrsData[intBldrIdx].Id, "");
+                        // warn msg "Missing totalizer volume tag"
+                        res = "";
+                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN54), programName, "BL-" + curblend.lngID, vntCompsData[intI].Name, gstrBldrName, "",
+                             "", "", "", res);
+
+                        return;
+                    }
+
+                    // get the Usage Name for the given blend Component
+                    strUsageName = await GetBldMatUsage(curblend.lngID, vntCompsData[intI].MatId);
+
+                    if (tagTotVol.vntTagVal != null)
+                    {
+                        // BDS 25-May-2012 PQ-D0075 Clamp the totalizer tag read value to zero if it is negative
+                        if (Convert.ToDouble(tagTotVol.vntTagVal) < 0)
+                        {
+                            tagTotVol.vntTagVal = (0).ToString();
+                        }
+
+                        // BDS 25-May-2012 PQ-D0075
+                        if ((strUsageName != "ADDITIVE"))
+                        {
+                            dblTotalVol = (dblTotalVol + Convert.ToDouble(tagTotVol.vntTagVal));
+                        }
+                        else
+                        {
+                            dblAddTotalVol = (dblAddTotalVol + Convert.ToDouble(tagTotVol.vntTagVal));
+                        }
+
+                    }
+                    else if ((strUsageName != "ADDITIVE"))
+                    {
+                        dblTotalVol = dblTotalVol;
+                    }
+                    else
+                    {
+                        dblAddTotalVol = dblAddTotalVol;
+                    }
+
+                    if (vntCompBldVol == null)
+                    {
+                        vntCompBldVol = 0;
+                    }
+
+                    // Get wild_flag_tid from abc_blender_comps and write to abc_blend_comps.wild
+                    if (vntCompsData[intI].WildFlagTid != null)
+                    {
+                        // get value of wild_flag_tid
+                        AbcTags DataRes2 = await _repository.GetTagNameAndVal(vntCompsData[intI].WildFlagTid);
+                        tagWildFlag.vntTagName = DataRes2.Name;
+                        tagWildFlag.vntTagVal = DataRes2.ReadValue.ToString();
+
+                        if (tagWildFlag.vntTagVal != null)
+                        {
+                            // Update abc_blend_comps.wild
+                            await _repository.UpdateAbcBlendCompWild(curblend.lngID, vntCompsData[intI].MatId, tagWildFlag.vntTagVal);
+                        }
+                    }
+
+                    if ((vntValQuality == "GOOD"))
+                    {
+                        if ((strReadEnabled == "NO"))
+                        {
+                            // warning msg "DCS tag ^1 reading disabled"
+                            res = "";
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN41), programName, "BL-" + curblend.lngID, "TOTALIZER STATION_VOL_TID", tagTotVol.vntTagName, "",
+                                 "", "", "", res);
+                        }
+
+                        if ((strScanEnabled == "NO"))
+                        {
+                            // warning msg "Scan group ^1 disabled"
+                            res = "";
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN42), programName, "BL-" + curblend.lngID, strScanGrpName, "TOTALIZER STATION_VOL_TID", tagTotVol.vntTagName,
+                                 "", "", "", res);
+                        }
+
+                    }
+                    else if (tagTotVol.vntTagVal == null || vntValQuality == "BAD")
+                    {
+                        // warning msg "Bad total vol tag ^1"
+                        res = "";
+                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN58), programName, "BL-" + curblend.lngID, tagTotVol.vntTagName, vntCompsData[intI].Name, gstrBldrName,
+                             "", "", "", res);
+                    }
+                }
+                //'End of download type calculation
+
+                //'Calculate delta volume based in one of the previous calculations
+                if (strUsageName != "ADDITIVE")
+                {
+                    if ((dblTotalVol > vntCompBldVol) && (vntValQuality == "GOOD"))
+                    {
+                        arDltVol[intI] = Convert.ToDouble(dblTotalVol - vntCompBldVol);
+                    }
+                    else if (dblTotalVol == vntCompBldVol)
+                    {
+                        // JO - Sep, 03: ZERO COMP RCP Handling.  Skip Msg
+                        if ((strRcpConstraintType != "ZERO_OUT"))
+                        {
+                            // Only issue msg on debug
+                            if ((enumDebugLevel >= DebugLevels.Low))
+                            {
+                                // warn msg "Totalizer vol unchanged"
+                                res = "";
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN55), programName, "BL-" + curblend.lngID, dblTotalVol.ToString(), vntCompsData[intI].Name, "",
+                                     "", "", "", res);
+                                // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                if ((gstrDownloadType == "STATION") || (gstrDownloadType == "LINEUP"))
+                                {
+                                    LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                }
+                            }
+
+                        }
+
+                        arDltVol[intI] = 0;
+                    }
+                    else
+                    {
+                        if ((vntCurRcp == null) && (strUsageName != "ADDITIVE"))
+                        {
+                            // set BMON_BADVOLUME error to blender, skip calculation
+                            await _repository.SetBlenderErrFlag("BMON_BADVOLUME", vntBldrsData[intBldrIdx].Id, "");
+                            // warn msg "Null current recipe for comp ^1"
+                            res = "";
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN56), programName, "BL-" + curblend.lngID, vntCompsData[intI].Name, gstrBldrName, "",
+                                 "", "", "", res);
+                            return;
+                        }
+
+                        // 1.0001 is a tolerance to avoid false messsages
+                        // BDS 11-May-2012 Tolerance increased by a factor of ten
+                        // If dblTotalVol * 1.0001 < vntCompBldVol.Value Then
+                        if ((dblTotalVol * 1.001) < vntCompBldVol.Value)
+                        {
+                            // BDS 11-May-2012
+                            // warn msg "Totalizer vol less than previous vol"
+                            // BDS 6-Jun-2012 PQ-D0075 Prevent a message when the total value is negative
+                            if ((dblTotalVol > 0))
+                            {
+                                res = "";
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN57), programName, "BL-" + curblend.lngID, dblTotalVol.ToString(), vntCompBldVol.ToString(), vntCompsData[intI].Name, gstrBldrName, "",
+                                     "", res);
+                                // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                if (((gstrDownloadType == "STATION")
+                                            || (gstrDownloadType == "LINEUP")))
+                                {
+                                    LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                }
+                            }
+                        }
+
+                        // Call CHECK_COMPONENT_VOLUME
+                        // BDS 11-May-2012 PQ-D0074 Calculate component volume change based on time of last update
+                        // arDltVol(intI) = ChkCompVol(intBldrIdx, vntBldrsData(PRDGRP_ID, intBldrIdx), _
+                        //    vntCurRcp.Value, intI, enumDebugLevel)
+                        arDltVol[intI] = await ChkCompVol(intBldrIdx, Convert.ToInt32(vntBldrsData[intBldrIdx].PrdgrpId), vntCurRcp.Value, gArCompValTime[intBldrIdx].arValueTime[intI], enumDebugLevel);
+                        // BDS 11-May-2012 PQ-D0074
+                    }
+
+                    arCompIntVol[intI] = ((vntCompIntVol == null) ? 0 : Convert.ToDouble(vntCompIntVol)) + arDltVol[intI];
+                    arCompBldVol[intI] = (vntCompBldVol.Value + arDltVol[intI]);
+                    dblNewVol = (dblNewVol + arDltVol[intI]);
+                    dblTotCompIntVol = (dblTotCompIntVol + arCompIntVol[intI]);
+                    dblTotCompBldVol = (dblTotCompBldVol + arCompBldVol[intI]);
+                    vntCompIntVol = arCompIntVol[intI];
+
+                    if (enumDebugLevel >= DebugLevels.Low)
+                    {
+                        res = "";
+                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG18), programName, cstrDebug, curblend.strName, vntCompsData[intI].Name, arDltVol[intI].ToString(), dblTotalVol.ToString(),
+                            vntCompBldVol.ToString(), "", res);
+
+                        // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                        if ((gstrDownloadType == "STATION") || (gstrDownloadType == "LINEUP"))
+                        {
+                            LogStnUpdateTim(intBldrIdx, arStationsDone);
+                        }
+                    }
+                }
+                else //'if additive
+                {
+                    if ((dblAddTotalVol > vntCompBldVol.Value) && (vntValQuality == "GOOD"))
+                    {
+                        arAddDltVol[intI] = Convert.ToDouble(dblAddTotalVol - vntCompBldVol);
+                    }
+                    else if ((dblAddTotalVol == vntCompBldVol.Value))
+                    {
+                        // JO - Sep, 03: ZERO COMP RCP Handling. Skip msg
+                        if ((strRcpConstraintType != "ZERO_OUT"))
+                        {
+                            // Only issue msg on debug
+                            if ((enumDebugLevel >= DebugLevels.Low))
+                            {
+                                // warn msg "Totalizer vol unchanged"
+                                res = "";
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN55), programName, "BL-" + curblend.lngID, dblAddTotalVol.ToString(), vntCompsData[intI].Name, "",
+                                     "", "", "", res);
+                                // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                if (((gstrDownloadType == "STATION")
+                                            || (gstrDownloadType == "LINEUP")))
+                                {
+                                    LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                }
+                            }
+
+                        }
+                        arAddDltVol[intI] = 0;
+                    }
+                    else
+                    {
+                        if ((vntCurRcp == null) && (strUsageName != "ADDITIVE"))
+                        {
+                            // set BMON_BADVOLUME error to blender, skip calculation
+                            await _repository.SetBlenderErrFlag("BMON_BADVOLUME", vntBldrsData[intBldrIdx].Id, "");
+                            res = "";
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN56), programName, "BL-" + curblend.lngID, vntCompsData[intI].Name, gstrBldrName, "",
+                                 "", "", "", res);
+                            return;
+                        }
+
+                        // 1.0001 is a tolerance to avoid false messsages
+                        // BDS 11-May-2012 Tolerance increased by a factor of ten
+                        // If dblAddTotalVol * 1.0001 < vntCompBldVol.Value Then
+                        if ((dblAddTotalVol * 1.001) < vntCompBldVol.Value)
+                        {
+                            // BDS 11-May-2012
+                            // warn msg "Totalizer vol less than previous vol"
+                            // BDS 6-Jun-2012 PQ-D0075 Prevent a message when the total value is negative
+                            if ((dblAddTotalVol > 0))
+                            {
+                                res = "";
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN57), programName, "BL-" + curblend.lngID, dblAddTotalVol.ToString(), vntCompBldVol.ToString(), vntCompsData[intI].Name, gstrBldrName, "",
+                                     "", res);
+                                // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                                if ((gstrDownloadType == "STATION") || (gstrDownloadType == "LINEUP"))
+                                {
+                                    LogStnUpdateTim(intBldrIdx, arStationsDone);
+                                }
+                            }
+                        }
+
+                        // Call CHECK_COMPONENT_VOLUME
+                        // BDS 11-May-2012 PQ-D0074 Calculate component volume change based on time of last update
+                        // arAddDltVol(intI) = ChkCompVol(intBldrIdx, vntBldrsData(PRDGRP_ID, intBldrIdx), _
+                        //     NVL(vntCurRcp.Value, 0), intI, enumDebugLevel)
+                        arAddDltVol[intI] = await ChkCompVol(intBldrIdx, Convert.ToInt32(vntBldrsData[intBldrIdx].PrdgrpId), (vntCurRcp == null) ? 0 : Convert.ToDouble(vntCurRcp), gArCompValTime[intBldrIdx].arValueTime[intI], enumDebugLevel);
+                    }
+
+                    arAddCompIntVol[intI] = ((vntCompIntVol == null) ? 0 : Convert.ToDouble(vntCompIntVol)) + arAddDltVol[intI];
+                    arAddCompBldVol[intI] = (vntCompBldVol.Value + arAddDltVol[intI]);
+                    // Get Volume conversion factor
+                    // dblVolConvFactor = GetVolConvFactor(curblend.lngID, vntBldrsData(PRDGRP_ID, intBldrIdx), curblend.intProdID, vntCompsData(2, intI))
+                    // Convert arAddDltVol[intI],arAddCompIntVol[intI],arAddCompBldVol[intI] to same units of blend volume
+                    dblAddNewVol = (dblAddNewVol + arAddDltVol[intI]);
+                    // * dblVolConvFactor
+                    dblAddTotCompIntVol = (dblAddTotCompIntVol + arAddCompIntVol[intI]);
+                    // * dblVolConvFactor
+                    dblAddTotCompBldVol = (dblAddTotCompBldVol + arAddCompBldVol[intI]);
+                    // * dblVolConvFactor
+                    vntCompIntVol = arAddCompIntVol[intI];
+                    if (enumDebugLevel >= DebugLevels.Low)
+                    {
+                        res = "";
+                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG18), programName, cstrDebug, curblend.strName, vntCompsData[intI].Name, arAddDltVol[intI].ToString(), dblAddTotalVol.ToString(),
+                            vntCompBldVol.ToString(), "", res);
+                        // BDS 6-Jul-2012 PQ-D0074 Record time database is updated with station current volumes
+                        if ((gstrDownloadType == "STATION") || (gstrDownloadType == "LINEUP"))
+                        {
+                            LogStnUpdateTim(intBldrIdx, arStationsDone);
+                        }
+
+                    }
+                }
+
+
+             }
+            
+            blnRollBack = false;
+            if ((gstrDownloadType == "STATION")|| (gstrDownloadType == "LINEUP"))
+            {
+                LogStnUpdateTim(intBldrIdx,arStationsDone);
+                // Record null database update time for any out-of-service blend stations
+                for (intI = 0; intI <= (intTotNStations - 1); intI++)
+                {
+                    for (intJ = 0; intJ <= (intTotNStations - 1); intJ++)
+                    {
+                        if (gArStnValTime[intBldrIdx].arKey[intI] == arStationsDone[intJ])
+                        {
+                            break;
+                        }
+
+                    }
+                    if (intJ > (intTotNStations - 1))
+                    {
+                        gArStnValTime[intBldrIdx].arValueTime[intI] = cdteNull;
+                    }
+                }
+            }
+
+            //'update comp blend volumes, calculate and update actual and average blend recipe,
+            //'calculate interval and blend cost
+            dblIntCost = 0;
+            dblBldCost = 0;
+            intStationNumber = 1;
+            vntActRcp = CompBld.ActRecipe;
+            vntAvgRcp = CompBld.AvgRecipe;
+            vntCompCost = CompBld.Cost;
+            //ABCdataEnv.rscmdCompBldData.MoveFirst   
+            blnRollBack = true;
+
+            for (intI = 0; intI <= (intNComps - 1); intI++)
+            {
+                // if null values set to zero
+                vntActRcp = (vntActRcp == null)?0: vntActRcp;
+                vntAvgRcp = (vntAvgRcp == null) ? 0 : vntAvgRcp;
+                // get the Usage Name for the given blend Component
+                strUsageName = await GetBldMatUsage(curblend.lngID, vntCompsData[intI].MatId);
+                if ((strUsageName != "ADDITIVE"))
+                {
+                    vntCompBldVol = arCompBldVol[intI];
+                    // ********* Protect divide by 0
+                    if (dblNewVol > 1E-06)
+                    {
+                        vntActRcp = (arDltVol[intI] / (dblNewVol * 100));
+                    }
+
+                    if ((dblTotCompBldVol > 1E-06))
+                    {
+                        vntAvgRcp = (arCompBldVol[intI]/ (dblTotCompBldVol * 100));
+                    }
+
+                    if ((dblTotCompIntVol > 1E-06))
+                    {
+                        dblIntRcp = (arCompIntVol[intI] / dblTotCompIntVol);
+                        //    JAIME: To set the Int Recipe to display in the BO
+                        dblIntRcp = Math.Round(dblIntRcp, 5);
+                        await _repository.SetIntRcp((dblIntRcp * 100),curblend.lngID,vntCompsData[intI].MatId,curblend.intCurIntv);
+                    }
+
+                }
+                else
+                {
+                    vntCompBldVol = arAddCompBldVol[intI];
+                    // Get Volume conversion factor
+                    dblVolConvFactor = await GetVolConvFactor(curblend.lngID, Convert.ToInt32(vntBldrsData[intBldrIdx].PrdgrpId), curblend.intProdID, Convert.ToInt32(vntCompsData[intI].MatId));
+                    // Actual additive recipe is: delta add vol/(New blend vol*dblVolConvFactor)
+                    if ((dblNewVol > 1E-06) && (dblVolConvFactor != 0))
+                    {
+                        vntActRcp = (arAddDltVol[intI] / (dblNewVol * dblVolConvFactor));
+                    }
+
+                    // Average additive recipe is: add vol in blend/(total blend vol*dblVolConvFactor)
+                    if ((dblTotCompBldVol > 1E-06) && (dblVolConvFactor != 0))
+                    {
+                        vntAvgRcp = (arAddCompBldVol[intI] / (dblTotCompBldVol * dblVolConvFactor));
+                    }
+
+                    // interval add recipe is: add vol in interval/(delta blend interval vol*dblVolConvFactor)
+                    if ((dblTotCompIntVol > 1E-06) && (dblVolConvFactor != 0))
+                    {
+                        dblIntRcp = (arAddCompIntVol[intI] / (dblTotCompIntVol * Convert.ToDouble(dblVolConvFactor)));
+                        dblIntRcp = Math.Round(dblIntRcp, 5);
+                        await _repository.SetIntRcp(dblIntRcp,curblend.lngID,vntCompsData[intI].MatId,curblend.intCurIntv);
+                    }
+
+                }
+
+                // **********************************
+                if ((gstrDownloadType == "STATION") || (gstrDownloadType == "LINEUP"))
+                {
+                    // Get the lineup id from abc_blend_sources
+                    lngCompLineupID = await _repository.GetBldLineupId(curblend.lngID, vntCompsData[intI].MatId);
+
+                    // Get the number of stations per component
+                    List<BlendStationEqp> BlendStationEqpList = await _repository.GetBlendStationEqp(lngCompLineupID,curblend.lngID,vntCompsData[intI].MatId);
+                    
+                    if (BlendStationEqpList.Count() > 0)
+                    {
+                        intStationNum = BlendStationEqpList.Count();
+                        // BDS 11-May-2012 PQ-D0077 Array redimensioned to wrong number
+                        // ReDim arStationId(0 To intNStations)
+                        arStationId = new double?[intStationNum];
+                        //ABCdataEnv.rscmdGetBlendStationEqp.MoveFirst;
+                    }
+
+                    dblTotStationVol = 0;
+                    dblAddTotStationVol = 0;
+                    for (intNum = 0; intNum <= (intStationNum - 1); intNum++)
+                    {
+                        arStationId[intNum] = BlendStationEqpList[intNum].StationId;
+                        if ((strUsageName != "ADDITIVE"))
+                        {
+                            dblTotStationVol = (dblTotStationVol + dblStationNewVol[(intStationNumber + intNum)]);
+                        }
+                        else
+                        {
+                            dblAddTotStationVol = (dblAddTotStationVol + dblAddStationNewVol[(intStationNumber + intNum)]);
+                        }
+                        //ABCdataEnv.rscmdGetBlendStationEqp.MoveNext;
+                    }
+                    
+                    //Set the actual recipe in abc_blend_stations.act_Setpoint
+                    for (intNum = 0; intNum <= (intStationNum - 1); intNum++)
+                    {
+                        if ((strUsageName != "ADDITIVE"))
+                        {
+                            // Write zero to actual recipe if comp volume is zero
+                            dblStationActRcp = 0;
+                            if ((dblTotStationVol > 1E-06))
+                            {
+                                dblStationActRcp = (dblStationNewVol[(intStationNumber + intNum)] * (vntActRcp.Value / dblTotStationVol));
+                            }
+
+                            // save the act recipe in abc_blend_stations.act_setpoint
+                            dblStationActRcp = Math.Round(dblStationActRcp, 5);
+                            await _repository.SetBldStatPar(dblStationActRcp, curblend.lngID, arStationId[intNum], vntCompsData[intI].MatId);
+                        }
+                        else
+                        {
+                            // Write zero to actual recipe if addtive volume is zero
+                            dblStationActRcp = 0;
+                            if ((dblAddTotStationVol > 1E-06))
+                            {
+                                // Add Station actual recipe is: Station vol(gr) times Actual recipe (gr/gal) / (total station vol(gr))
+                                dblStationActRcp = (dblAddStationNewVol[(intStationNumber + intNum)] * (vntActRcp.Value / dblAddTotStationVol));
+                            }
+
+                            // save the act recipe in abc_blend_stations.act_setpoint
+                            dblStationActRcp = Math.Round(dblStationActRcp, 5);
+                            await _repository.SetBldStatPar(dblStationActRcp,curblend.lngID,arStationId[intNum],vntCompsData[intI].MatId);
+                        }
+                    }
+
+                    // Move to the next station
+                    intStationNumber = (intStationNumber + intStationNum);
+                }
+
+                if ((enumDebugLevel == DebugLevels.Low))
+                {
+                    res = "";
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG19), programName, cstrDebug, curblend.strName, vntCompsData[intI].Name, vntActRcp.ToString(), "",
+                    "", "", res);
+
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG21), programName, cstrDebug, curblend.strName, vntCompsData[intI].Name, arCompIntVol[intI].ToString(), arCompBldVol[intI].ToString(),
+                   "", "", res);
+                }
+
+                if (vntCompCost == null)
+                {
+                    // warn msg "Null material cost for comp ^1"
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN59), programName, "BL-" + curblend.lngID, vntCompsData[intI].Name, curblend.strName, "", "",
+                  "", "", res);
+                }
+                else if ((strUsageName != "ADDITIVE"))
+                {
+                    dblIntCost = (dblIntCost + (dblIntRcp * vntCompCost.Value));
+                    dblBldCost = (dblBldCost + (vntAvgRcp.Value * (vntCompCost.Value / 100)));
+                    //             dblCompIntCost = dblCompIntCost + arCompIntVol[intI] * vntCompCost.Value
+                    //             dblCompBldCost = dblCompBldCost + arCompBldVol[intI] * vntCompCost.Value
+                }
+                else
+                {
+                    dblAddIntCost = (dblAddIntCost + (arAddCompIntVol[intI] * vntCompCost.Value));
+                    dblAddBldCost = (dblAddBldCost + (arAddCompBldVol[intI] * vntCompCost.Value));
+                }
+
+                if ((enumDebugLevel == DebugLevels.High))
+                {
+                    res = "";
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG23), programName, cstrDebug, curblend.strState, vntCompsData[intI].Name, vntActRcp.ToString(), dblIntRcp.ToString(),
+                    "", "", res);
+                }                
+               // ABCdataEnv.rscmdCompBldData.MoveNext;
+            }
+            
+            blnRollBack = false;           
+            // BDS 11-May-2012 PQ-D0074 Record time of component volume database update
+            for (intI = 0; intI <= (intNComps - 1); intI++)
+            {
+                gArCompValTime[intBldrIdx].arValueTime[intI] = DateTime.Now;
+            }
+
+            // BDS 11-May-2012 PQ-D0074
+            //    'Calculate Interval/Blend cost excluding the additives
+            //    dblIntCost = (dblCompIntCost + dblAddIntCost) / (dblTotCompIntVol + dblAddTotCompIntVol)
+            //    dblBldCost = (dblCompBldCost + dblAddBldCost) / (dblTotCompBldVol + dblAddTotCompBldVol)
+            if (enumDebugLevel == DebugLevels.Low)
+            {
+                res = "";
+                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG24), programName, cstrDebug, curblend.strName, dblTotCompIntVol.ToString(), dblIntCost.ToString(), dblBldCost.ToString(),
+                "", "", res);
+            }
+
+            // calculate interval and blend volumes
+            dblIntVol = await _repository.GetIntVol(curblend.lngID,curblend.intCurIntv);
+            dblIntVol = (dblIntVol + dblNewVol);
+            gdblBldVol = Convert.ToDouble(curblend.sngCurVol + dblNewVol);
+
+            if (enumDebugLevel == DebugLevels.Low)
+            {
+                res = "";
+                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG20), programName, cstrDebug, curblend.strName, curblend.intCurIntv.ToString(), dblNewVol.ToString(), dblIntVol.ToString(),
+                "", "", res);                
+            }
+
+            if (enumDebugLevel >= DebugLevels.Low)
+            {
+                res = "";
+                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG22), programName, cstrDebug, curblend.strName, gdblBldVol.ToString(), dblTotCompBldVol.ToString(), "",
+                "", "", res);               
+            }
+
+            // check consistency between total comp volume and blend volume '+ dblAddTotCompBldVol
+            if (((Math.Abs((dblTotCompBldVol - gdblBldVol)) > ((gProjDfs.vntVolTolr== null)?(0.002 * curblend.sngTgtVol): gProjDfs.vntVolTolr))
+                        && (curblend.intCurIntv > gArPrevBldData[intBldrIdx].intCurIntv)))
+            {
+                if ((enumDebugLevel == DebugLevels.Low))
+                {
+                    // warning msg "Total comp vol and blend vol differ more than ^1"
+                    res = "";
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN60), programName, "BL-" + curblend.lngID, dblTotCompBldVol.ToString(), gdblBldVol.ToString(), curblend.strName,
+                        (gProjDfs.vntVolTolr == null) ? (0.002 * curblend.sngTgtVol).ToString() : gProjDfs.vntVolTolr.ToString(), "", "", res);                  
+                }
+
+            }
+
+            // save interval volume,cost
+            dblIntVol = Math.Round(Convert.ToDouble(dblIntVol), 5);
+            dblIntCost = Math.Round(dblIntCost, 5);
+            //update also new field abc_blend_intervals.blend_volume in every cycle
+            await _repository.SetIntVolCost(dblIntVol,dblIntCost,gdblBldVol,curblend.lngID,curblend.intCurIntv);
+            //initialize the sum of vols for all materials = total  component inteval vol
+            dblSumVol = dblTotCompIntVol;
+            //Save current volume, cost and current rate to the blend
+            dblBldCost = Math.Round(dblBldCost, 5);
+            await _repository.SetBldVolCost(gdblBldVol,dblBldCost,gTagTotFlow.vntTagVal,curblend.lngID);
+            //Update the local value of current volume for the rest of the calcs during this cycle of Bmon
+            curblend.sngCurVol = gdblBldVol;
+            gintOptResult = RetStatus.FAILURE;
+            if (curblend.strState.Trim() != "PAUSED")
+            {
+                //Call GAMS two times per interval: One at the middle and another one at the end of the interval
+                if ((((curblend.intCurIntv > gArPrevBldData[intBldrIdx].intCurIntv) && (curblend.intCurIntv > 1)) || 
+                    ((gArBldFinishTime[intBldrIdx] != cdteNull) && (curblend.intCurIntv > 1))))
+                {
+                    //            Or (gIntProcLineProp[intBldrIdx] = 2 And curblend.intCurIntv > 1) Then
+                    //          'JO - Aug, 03: Move to the beginning of the program
+                    //          Set up global array of prdgrp IDs
+                    //          GetPrdgrpIDs
+                    // JO: Nov. 14, 2006: If blend is finished in RBC, then close current interval and open a new one.
+                    // The TQI will be set for TMon to perform it and blend will be closed in the next cycle of Bmon
+                    // Note that all remaining volume was allocated in the previuos interval to be accounted in the last TQI
+                    if ((gArBldFinishTime[intBldrIdx] != cdteNull) && (curblend.intCurIntv > 1))
+                    {
+                        ChkIntervals(intBldrIdx,curblend,enumDebugLevel);
+                    }
+
+                    // JOJOJOJOJOJOJOJ
+                    //         If curblend.intCurIntv > gArPrevBldData[intBldrIdx].intCurIntv And curblend.intCurIntv > 1 Then
+                    // Get the Inteval volumes for the previous interval to pass it to GAMS
+                    List<CompIntVols> CompIntVolsList = await _repository.CompIntVols(curblend.lngID,gArPrevBldData[intBldrIdx].intCurIntv);
+                    
+                    intI = 0;
+                    intNCompIndx = 0;
+                    dblSumVol = 0;
+                    foreach (var CompIntVolsobj in CompIntVolsList)
+                    {
+                        // get the Usage Name for the given blend Component
+                        strUsageName = await GetBldMatUsage(curblend.lngID, vntCompsData[intNCompIndx].MatId);
+                        if ((strUsageName != "ADDITIVE"))
+                        {
+                            //If ABCdataEnv.rscmdCompIntVols.Fields("VOLUME").Value <> 0 Then
+                            //Exclude additives to pass comps to opt
+                            Array.Resize(ref arCompIntVol, intI);
+
+                            arCompIntVol[intI] = (CompIntVolsobj.Volume == null) ? 0 : Convert.ToDouble(CompIntVolsobj.Volume);
+                            dblSumVol = (dblSumVol + arCompIntVol[intI]);
+                            intI = (intI + 1);
+                        }
+
+                        intNCompIndx = (intNCompIndx + 1);                      
+                    }                    
+                    
+                    //Store the real number of comps, excluding the additives
+                    intNComps = intI;                    
+                    //Skip the call of ModelLocal if the Number of components is only one
+                    if ((intNComps > 1))
+                    {
+                        //  if dblSumVol=0: BLEND ^1: TOTAL COMPONENT INTERVAL VOLUME IS ZERO FOR INTERVAL ^2.  LINEPROP CALC WILL NOT BE PERFORMED
+                        if ((dblSumVol == 0))
+                        {
+                            res = "";
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN94), programName, "BL-" + curblend.lngID, curblend.strName, curblend.intCurIntv.ToString(), "",
+                                "", "", "", res);                           
+                        }
+
+                        //  Jaime: if calcprop_flag="YES" in abc_blenders, then proccess LINEPROP
+                        if (((vntBldrsData[intBldrIdx].CalcpropFlag) == "YES") && (curblend.sngCurVol != 0) && (dblSumVol > 0))
+                        {
+                            // call MODEL_LOCAL to do line property calculation for previous interval
+                            await ModelLocal(GAMSCalcTypes.LINEPROP, curblend.lngID, gArPrevBldData[intBldrIdx].intCurIntv, arCompIntVol, enumDebugLevel, , gintOptResult);
+                        }
+                    }
+                    else
+                    {
+                        //  Copy the selected Properties from ABC_BLEND_COMP_Props to Feedback_pred in abc_blend_interval_props
+                        List<SelTankProps> SelTankPropsList = await _repository.GetSelTankProps(curblend.lngID);
+                        foreach (var SelTankPropsObj in SelTankPropsList)
+                        {
+                            dblFeedbackPred = (SelTankPropsObj.Value == null)? 0: Convert.ToInt32(SelTankPropsObj.Value);
+                            intCompPropID = Convert.ToInt32(SelTankPropsObj.PropId);
+                            await _repository.SetFeebackPred(dblFeedbackPred,curblend.lngID,gArPrevBldData[intBldrIdx].intCurIntv,intCompPropID);   
+                        }                        
+
+                        // if # of components > 1
+                        // JO - Aug, 03: Added a bias Calc parameter to diff, between calc bias types.  This call is for
+                        // the common bias calc done every new interval.  This calls updates the Anzr values only (prev calc bias logic)
+                        // Note: That calcbias sub has been moved to this place to calc bias only when a new interval is created, just
+                        // after LINEPROP calc
+                        // Pass an internal variable to identify the procedence of the bias call: REGular
+                        CalcBias(intBldrIdx, vntBldrsData, curblend, enumDebugLevel, "REG");
+                        UpdateBlendProps(intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+                    }
+
+                    // if new interval was created
+                }
+
+                // if blend state = "ACTIVE"
+            }
+
+
+
 
         }
         private async Task<int> MonitorBlend(int intBldrIdx, List<AbcBlenders> vntBldrsData, CurBlendData curblend, int intDestTankID, DebugLevels enumDebugLevel)

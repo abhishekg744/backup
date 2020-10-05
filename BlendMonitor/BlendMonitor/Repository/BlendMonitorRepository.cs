@@ -1128,7 +1128,7 @@ namespace BlendMonitor.Repository
                           {
                               TotCompVolTid = comp.TotCompVolTid,
                               MatId = comp.MatId,
-                              TotalStationTag = tag.Name,
+                              TotalCompTag = tag.Name,
                               ReadValue = tag.ReadValue,
                               ValueTime = tag.ValueTime,
                               ValueQuality = tag.ValueQuality,
@@ -1165,7 +1165,7 @@ namespace BlendMonitor.Repository
             List<double> stationIds = await (from bs in _blendMonitorContext.AbcBlendStations
                                              from bc in _blendMonitorContext.AbcBlendComps
                                              where bs.BlendId == bc.BlendId && bs.MatId == bc.MatId && bs.InUseFlag == "YES" &&
-                                             bs.BlendId == blendId && (bc.ActRecipe > RecipeViolationTolerance || bc.RcpConstraintType != "ZERO_OUT"
+                                             bs.BlendId == blendId && bc.ActRecipe > RecipeViolationTolerance || bc.RcpConstraintType != "ZERO_OUT"
                                              && !usageIds.Contains(Convert.ToDouble(bc.UsageId)) && bs.ActSetpoint > RecipeViolationTolerance
                                              select bs.StationId).ToListAsync<double>();
 
@@ -1210,7 +1210,7 @@ namespace BlendMonitor.Repository
             List<double> stationIds = await (from bs in _blendMonitorContext.AbcBlendStations
                                              from bc in _blendMonitorContext.AbcBlendComps
                                              where bs.BlendId == bc.BlendId && bs.MatId == bc.MatId && bs.InUseFlag == "YES" &&
-                                             bs.BlendId == blendId && (bc.ActRecipe > RecipeViolationTolerance || bc.RcpConstraintType != "ZERO_OUT"
+                                             bs.BlendId == blendId && bc.ActRecipe > RecipeViolationTolerance || bc.RcpConstraintType != "ZERO_OUT"
                                              && !usageIds.Contains(Convert.ToDouble(bc.UsageId)) && bs.ActSetpoint > RecipeViolationTolerance
                                              select bs.StationId).ToListAsync<double>();
 
@@ -1227,7 +1227,652 @@ namespace BlendMonitor.Repository
                                            .ToListAsync<TotalizerScanTimes>();
            
         }
-        
+        public async Task<List<AbcBlendStations>> GetAllBldStations(double blendId)
+        {
+            //select station_id, mat_id from abc_blend_stations where blend_id =?
+            return await _blendMonitorContext.AbcBlendStations
+                        .Where<AbcBlendStations>(row => row.BlendId == blendId)
+                        .ToListAsync<AbcBlendStations>();
+        }
+        public async Task<List<CompIntVols>> CompIntVols(double blendId, int interval)
+        {
+            //select upper(abc_materials.name) name, abc_blend_interval_comps.volume 
+            //from abc_materials, abc_blend_interval_comps 
+            //where abc_materials.id = abc_blend_interval_comps.mat_id and abc_blend_interval_comps.blend_id = ? 
+            //and abc_blend_interval_comps.sequence = ? order by abc_blend_interval_comps.mat_id
+            return await (from am in _blendMonitorContext.AbcMaterials
+                          from abic in _blendMonitorContext.AbcBlendIntervalComps
+                          where am.Id == abic.MatId && abic.BlendId == blendId
+                          && abic.Sequence == interval
+                          select new CompIntVols {
+                              Volume = abic.Volume,
+                              Name = am.Name.ToUpper()
+                          }).ToListAsync<CompIntVols>();
+            // returning only volume as name is not used
+        }
+
+        public async Task<CompBldData> CompBldData(double blendId)
+        {
+            //select bldcomp.volume, bldcomp.cur_recipe, bldcomp.act_recipe, bldcomp.avg_recipe, bldcomp.cost, usage_id, usage.name as usage_name 
+            //from abc_blend_comps bldcomp, abc_usages usage 
+            //where bldcomp.blend_id = ? and bldcomp.usage_id = usage.id order by bldcomp.mat_id
+            return await (from bldcomp in _blendMonitorContext.AbcBlendComps
+                          from usage in _blendMonitorContext.AbcUsages
+                          where bldcomp.BlendId == blendId && bldcomp.UsageId == usage.Id
+                          select new CompBldData
+                          {
+                              Volume = bldcomp.Volume,
+                              CurRecipe = bldcomp.CurRecipe,
+                              ActRecipe = bldcomp.ActRecipe,
+                              AvgRecipe = bldcomp.AvgRecipe,
+                              Cost = bldcomp.Cost,
+                              UsageId = usage.Id,
+                              UsageName = usage.Name
+                          }).FirstOrDefaultAsync<CompBldData>();
+        }
+        public async Task<double?> GetBldLineupId(double blendId, double MatId)
+        {
+            //select lineup_id from abc_blend_sources where blend_id =? and mat_id =? and in_use_flag = 'YES'
+            return await _blendMonitorContext.AbcBlendSources
+                        .Where<AbcBlendSources>(row => row.BlendId == blendId && row.MatId == MatId && row.InUseFlag == "YES")
+                        .Select(row => row.LineupId)
+                        .FirstOrDefaultAsync<double?>();
+        }
+        public async Task<List<BldrStationsData>> GetBldrStationsData(double? lngCompLineupID, double blenderId)
+        {
+            //select eqp.station_id, st.name as station_name, st.min,st.max,
+            //st.in_use_flag,st.rcp_sp_tag_id,st.rcp_meas_tag_id,
+            //st.mat_num_tid,st.tank_select_num_tid,st.tank_preselect_num_tid,
+            //st.dcs_station_num,st.select_station_tid,st.total_station_vol_tid,
+            //st.wild_flag_tid,st.total_flow_control_tid, st.lineup_sel_tid, st.lineup_presel_tid,st.pumpA_sel_tid, st.pumpb_sel_tid,
+            //st.pumpc_sel_tid, st.pumpd_sel_tid, st.lineup_feedback_tid,st.tank_feedback_tid, eqp.line_eqp_order
+
+            //from abc_comp_lineup_eqp eqp, abc_stations st
+
+            // where eqp.station_id = st.id(+) and eqp.line_id =? and
+            //   st.blender_id =?
+            //   order by eqp.line_eqp_order
+
+            return await (from eqp in _blendMonitorContext.AbcCompLineupEqp
+                          from st in _blendMonitorContext.AbcStations
+                          where eqp.StationId == st.Id && eqp.LineId == lngCompLineupID && st.BlenderId == blenderId
+                          select new BldrStationsData
+                          {
+                              StationId = eqp.StationId,
+                              StationName = st.Name,
+                              Min = st.Min,
+                              Max = st.Max,
+                              InUseFlag = st.InUseFlag,
+                              RcpSpTagId = st.RcpSpTagId,
+                              RcpMeasTagId = st.RcpMeasTagId,
+                              MatNumTid = st.MatNumTid,
+                              TankSelectNumTid = st.TankSelectNumTid,
+                              TankPreSelectNumTid = st.TankPreselectNumTid,
+                              DcsStationNum = st.DcsStationNum,
+                              SelectStationTid = st.SelectStationTid,
+                              TotalStationVolTid = st.TotalStationVolTid,
+                              WildFlagTid = st.WildFlagTid,
+                              TotalFlowControlTid = st.TotalFlowControlTid,
+                              LineupSelTid = st.LineupSelTid,
+                              LineupPreSelTid = st.LineupPreselTid,
+                              PumpASelTid = st.PumpaSelTid,
+                              PumpBSelTid = st.PumpbSelTid,
+                              PumpCSelTid = st.PumpcSelTid,
+                              PumpDSelTid = st.PumpdSelTid,
+                              LineupFeedbackTid = st.LineupFeedbackTid,
+                              TankFeedbackTid = st.TankFeedbackTid,
+                              LineEqpOrder = eqp.LineEqpOrder
+                          }).ToListAsync<BldrStationsData>();
+        }
+        public async Task<AbcBlendStations> GetBldStationsData(double blendId, double MatId, double? stationId)
+        {
+            //SELECT MIN_FLOW, MAX_FLOW, PREV_VOL, CUR_VOL, CUR_SETPOINT AS CUR_RECIPE, IN_USE_FLAG 
+            //FROM ABC_BLEND_STATIONS 
+            //WHERE BLEND_ID =? AND MAT_ID =? AND STATION_ID =? AND IN_USE_FLAG = 'YES'
+            return await _blendMonitorContext.AbcBlendStations
+                        .Where<AbcBlendStations>(row => row.BlendId == blendId && row.MatId == MatId && row.StationId == stationId
+                        && row.InUseFlag == "YES").FirstOrDefaultAsync<AbcBlendStations>();
+        }
+        public async Task<string> GetFlowDenom(int intPrdgrpID)
+        {
+            //select upper(flow_denominator) into flow_denom from abc_prdgrps where id = prdgrp_id;
+            return await _blendMonitorContext.AbcPrdgrps
+                    .Where<AbcPrdgrps>(row => row.Id == intPrdgrpID)
+                    .Select(row => row.FlowDenominator.ToUpper())
+                    .FirstOrDefaultAsync<string>();
+        }
+
+        public async Task<int> UpdateAbcBlendCompWild(double blendId, double matId, string vntTagVal)
+        {
+            //("UPDATE abc_blend_comps SET wild="
+            //                               + (tagWildFlag.vntTagVal + (" WHERE blend_id="
+            //                               + (curblend.lngID + (" AND mat_id=" + vntCompsData(2, intI))))));            
+
+            AbcBlendComps Data = await _blendMonitorContext.AbcBlendComps
+                                    .Where<AbcBlendComps>(row => row.BlendId == blendId && row.MatId == matId)
+                                    .FirstOrDefaultAsync<AbcBlendComps>();
+            Data.Wild = Convert.ToDouble(vntTagVal);
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<double?> GetAddStationVol(double blendId, double matId, double? curLineupId)
+        {
+            // select sum(bs.cur_vol) as Add_Station_Vol
+            // from abc_blend_stations bs
+            // where bs.blend_id=" & lngBlendId & " and bs.mat_id= " & lngMatId & " and bs.in_use_flag='NO' and "
+            // bs.station_id in ((select station_id from abc_comp_lineup_eqp where line_id= " 
+            // (select MASTER_LINEUP_ID from abc_blend_sources where blend_id= " 
+            // lngBlendId & " and mat_id= " & lngMatId & " and "
+            // in_use_flag='YES')) minus (select station_id from abc_comp_lineup_eqp where line_id=" & lngCurLineupId & "))"
+
+            List<double?> StationIds2 = await _blendMonitorContext.AbcCompLineupEqp
+                                    .Where<AbcCompLineupEqp>(row => row.LineId == curLineupId)
+                                    .Select(row => row.StationId)
+                                    .ToListAsync<double?>();
+            double? masterLineupId = await _blendMonitorContext.AbcBlendSources
+                                        .Where<AbcBlendSources>(row => row.BlendId == blendId && row.MatId == matId && row.InUseFlag == "YES")
+                                        .Select(row => row.MasterLineupId).FirstOrDefaultAsync<double?>();
+
+            List<double?> StationIds1 = await _blendMonitorContext.AbcCompLineupEqp
+                                   .Where<AbcCompLineupEqp>(row => row.LineId == masterLineupId)
+                                   .Select(row => row.StationId)
+                                   .ToListAsync<double?>();
+            List<double?> minusedStations = new List<double?>();
+
+            foreach (double? item in StationIds1)
+            {
+                if (!StationIds2.Contains(item))
+                {
+                    minusedStations.Add(item);
+                }
+            }
+
+            return await _blendMonitorContext.AbcBlendStations
+                            .Where<AbcBlendStations>(row => row.BlendId == blendId && row.MatId == matId && row.InUseFlag == "NO"
+                            && minusedStations.Contains(row.StationId))
+                            .SumAsync(row => row.CurVol);
+        }
+        public async Task<int> SetStationCurVol(string TagVal, double blendId, double? stationId, double matId)
+        {
+            //update abc_blend_stations set cur_vol = ? where blend_id = ? and station_id = ? and mat_id = ?
+            AbcBlendStations Data = await _blendMonitorContext.AbcBlendStations
+                                        .Where<AbcBlendStations>(row => row.BlendId == blendId && row.StationId == stationId && row.MatId == matId)
+                                        .FirstOrDefaultAsync<AbcBlendStations>();
+            Data.CurVol = Convert.ToDouble(TagVal);
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetStationPrevVol(string TagVal, double blendId, double? stationId, double matId)
+        {
+            //update abc_blend_stations set prev_vol = ? where blend_id = ? and station_id = ? and mat_id = ?
+            AbcBlendStations Data = await _blendMonitorContext.AbcBlendStations
+                                        .Where<AbcBlendStations>(row => row.BlendId == blendId && row.StationId == stationId && row.MatId == matId)
+                                        .FirstOrDefaultAsync<AbcBlendStations>();
+            Data.PrevVol = Convert.ToDouble(TagVal);
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+
+        public async Task<int> SetIntRcp(double intRcp, double blendId, double matId, int intCurIntv)
+        {
+            //update abc_blend_interval_comps set int_recipe = ? where blend_id = ? and mat_id = ? and sequence = ?
+            AbcBlendIntervalComps Data = await _blendMonitorContext.AbcBlendIntervalComps
+                                        .Where<AbcBlendIntervalComps>(row => row.BlendId == blendId && row.Sequence == intCurIntv && row.MatId == matId)
+                                        .FirstOrDefaultAsync<AbcBlendIntervalComps>();
+            Data.IntRecipe = intRcp;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+
+        public async Task<List<PrdgrpVolFactor>> GetPrdgrpVolFactor(int intPrdgrpID,int intProductId,int intAdditiveId)
+        {
+            //SELECT PRDGRP.VOLUME_UOM_ID, UOM1.UNITS_NAME AS PRDGRP_VOL_UNITS, ADDT.UOM_ID, UOM2.UNITS_NAME AS ADD_VOL_UNITS, ADDT.UNIT_FACTOR
+            //FROM ABC_PRDGRPS PRDGRP, ABC_PRD_ADDITIVES ADDT,ABC_UOM UOM1, ABC_UOM UOM2
+            //WHERE PRDGRP.ID = ADDT.PRDGRP_ID AND PRDGRP.VOLUME_UOM_ID = UOM1.ID(+) AND
+            //ADDT.UOM_ID = UOM2.ID(+) AND PRDGRP.ID =? AND
+            //  ADDT.PRODUCT_ID =? AND ADDT.ADDITIVE_ID =?
+
+            return await (from PRDGRP in _blendMonitorContext.AbcPrdgrps
+                          from ADDT in _blendMonitorContext.AbcPrdAdditives
+                          from UOM1 in _blendMonitorContext.AbcUom
+                          from UOM2 in _blendMonitorContext.AbcUom
+                          where PRDGRP.Id == ADDT.PrdgrpId && PRDGRP.VolumeUomId == UOM1.Id && ADDT.UomId == UOM2.Id
+                          && PRDGRP.Id == intPrdgrpID && ADDT.ProductId == intProductId && ADDT.AdditiveId == intAdditiveId
+                          select new PrdgrpVolFactor
+                          {
+                              VolumeUomId = PRDGRP.VolumeUomId,
+                              PrdgrpVolUnits = UOM1.UnitsName,
+                              UomId = ADDT.UomId,
+                              AddVolUnits = UOM2.UnitsName,
+                              UnitFactor = ADDT.UnitFactor
+                          }).ToListAsync<PrdgrpVolFactor>();
+
+        }
+
+        public async Task<List<BlendStationEqp>> GetBlendStationEqp(double? lineUpId, double blendId, double matid)
+        {
+            //select bs.station_id, bs.min_flow, bs.max_flow, eqp.line_eqp_order
+            //from abc_blend_stations bs, abc_comp_lineup_eqp eqp
+            // where bs.station_id = eqp.station_id and eqp.line_id =? and
+            //  bs.blend_id =? and bs.mat_id =? and in_use_flag = 'YES'
+            //order by eqp.line_eqp_order
+
+            return await (from bs in _blendMonitorContext.AbcBlendStations
+                          from eqp in _blendMonitorContext.AbcCompLineupEqp                          
+                          where bs.StationId == eqp.StationId && eqp.LineId == lineUpId &&
+                           bs.BlendId == blendId && bs.MatId ==matid  && bs.InUseFlag == "YES"
+                          select new BlendStationEqp
+                          {
+                             StationId = bs.StationId,
+                              MinFlow =  bs.MinFlow,
+                              MaxFlow =  bs.MaxFlow,
+                              LineEqpOrder = eqp.LineEqpOrder
+                          }).ToListAsync<BlendStationEqp>();
+
+        }
+        public async Task<int> SetBldStatPar(double dblStationActRcp, double blendId, double? stationId, double matId)
+        {
+            //update abc_blend_stations set act_setpoint=? where blend_id=? and station_id=? and mat_id=?
+            AbcBlendStations Data = await _blendMonitorContext.AbcBlendStations
+                                        .Where<AbcBlendStations>(row => row.BlendId == blendId && row.StationId == stationId && row.MatId == matId)
+                                        .FirstOrDefaultAsync<AbcBlendStations>();
+            Data.ActSetpoint = dblStationActRcp;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetIntVolCost(double? dblIntVol,double dblIntCost,double gdblBldVol, double blendId, int intCurIntv)
+        {
+            //update abc_blend_intervals set volume = ?, cost = ?, blend_volume = ? where blend_id = ? and sequence = ?
+            AbcBlendIntervals Data = await _blendMonitorContext.AbcBlendIntervals
+                                        .Where<AbcBlendIntervals>(row => row.BlendId == blendId && row.Sequence== intCurIntv)
+                                        .FirstOrDefaultAsync<AbcBlendIntervals>();
+            Data.Volume = dblIntVol;
+            Data.Cost = dblIntCost;
+            Data.BlendVolume = gdblBldVol;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+
+        public async Task<int> SetBldVolCost(double gdblBldVol, double dblBldCost,string vntTagVal,double blendId)
+        {
+            //update abc_blends set current_vol = ?, cost = ?, rate_sp_fb = ?  where id = ?
+            AbcBlends Data = await _blendMonitorContext.AbcBlends
+                                        .Where<AbcBlends>(row => row.Id == blendId)
+                                        .FirstOrDefaultAsync<AbcBlends>();
+            Data.CurrentVol = gdblBldVol;
+            Data.Cost = dblBldCost;
+            Data.RateSpFb = Convert.ToDouble(vntTagVal);
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<double?> GetIntVol(double blendId, int intCurIntv) {
+            //select volume into intv_vol from abc_blend_intervals where blend_id = blend_id1 and
+            //sequence = sequence1;
+
+            return await _blendMonitorContext.AbcBlendIntervals
+                    .Where<AbcBlendIntervals>(row => row.BlendId == blendId && row.Sequence == intCurIntv)
+                    .Select(row => row.Volume)
+                    .FirstOrDefaultAsync<double?>();
+
+        }
+        public async Task<List<SelTankProps>> GetSelTankProps(double blendId)
+        {
+            //Select abc_blend_comp_props.prop_id, 
+            //abc_blend_comp_props.value
+
+            //from abc_blend_comp_props, abc_blend_sources
+
+            //where abc_blend_sources.mat_id = abc_blend_comp_props.mat_id AND
+            //abc_blend_sources.blend_id = abc_blend_comp_props.blend_id AND
+            //abc_blend_sources.tank_id = abc_blend_comp_props.tank_id AND
+            //abc_blend_sources.blend_id = ? AND
+            //upper(abc_blend_sources.in_use_flag) = 'YES' AND
+            //upper(abc_blend_comp_props.good_flag) = 'YES'
+            return await (from abcp in _blendMonitorContext.AbcBlendCompProps
+                   from abs in _blendMonitorContext.AbcBlendSources
+                   where abs.MatId == abcp.MatId &&
+                    abs.BlendId == abcp.BlendId &&
+                    abs.TankId == abcp.TankId &&
+                    abs.BlendId == blendId &&
+                    abs.InUseFlag.ToUpper() == "YES" &&
+                    abcp.GoodFlag == "YES"
+                   select new SelTankProps
+                   {
+                       PropId = abcp.PropId,
+                       Value = abcp.Value
+                   }).ToListAsync<SelTankProps>();
+        }
+        public async Task<int> SetFeebackPred(double dblFeedbackPred, double blendId,int intCurIntv,int intCompPropID)
+        {
+            //UPDATE ABC_BLEND_INTERVAL_PROPS SET FEEDBACK_PRED=? WHERE BLEND_ID=? AND SEQUENCE=? AND PROP_ID=?
+            AbcBlendIntervalProps Data = await _blendMonitorContext.AbcBlendIntervalProps
+                                                .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.Sequence == intCurIntv
+                                                && row.PropId == intCompPropID).FirstOrDefaultAsync<AbcBlendIntervalProps>();
+            Data.FeedbackPred = dblFeedbackPred;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<string> GetOptEngine()
+        {
+            //select opn_engine from abc_proj_defaults
+            return await _blendMonitorContext.AbcProjDefaults
+                            .Select(row => row.OpnEngine)
+                            .FirstOrDefaultAsync<string>();
+        }
+        public async Task<List<string>> GetSBPath()
+        {
+            //select STARBLEND_INST_PATH SB_PATH from abc_proj_defaults
+            return await _blendMonitorContext.AbcProjDefaults
+                            .Select(row => row.StarblendInstPath)
+                            .ToListAsync<string>();
+        }
+        public async Task<List<double>> GetBlendIntProps(double blendId, double PrdgrpId)
+        {
+            //select distinct bip.prop_id
+            //from abc_blend_interval_props bip, abc_prdgrp_props pp
+            //where bip.prop_id = pp.prop_id and bip.blend_id = ? and
+            //pp.prdgrp_id = ?
+            return await (from bip in _blendMonitorContext.AbcBlendIntervalProps
+                          from pp in _blendMonitorContext.AbcPrdgrpProps
+                          where bip.PropId == pp.PropId && bip.BlendId == blendId &&
+                          pp.PrdgrpId == PrdgrpId
+                          select bip.PropId).Distinct().ToListAsync<double>();
+        }
+        public async Task<int> CheckPropertyUsed(double blendId, double propId, string strUsedFlag)
+        {
+            //"select bsp.prop_id, bsp.sample_name " & _
+            //"from abc_blend_sample_props bsp, abc_blends b " & _
+            //"where bsp.blend_id=b.id(+) and bsp.blend_id=" & lngBlendId & _
+            //" and bsp.used_flag='" & strUsedFlag & "' and bsp.prop_id=" & _
+            //lngPropID
+            var Data = await (from bsp in _blendMonitorContext.AbcBlendSampleProps
+                              from b in _blendMonitorContext.AbcBlends
+                              where bsp.BlendId == b.Id && bsp.BlendId == blendId && bsp.UsedFlag == strUsedFlag && bsp.PropId == propId
+                              select bsp).ToListAsync<AbcBlendSampleProps>();
+            return Data.Count();
+        }
+
+        public async Task<List<AbcBlendIntervalProps>> GetBiasCalData1(double blendId, double propId, int intStartInterval, int intStopInterval)
+        {
+            //"SELECT BIP.SEQUENCE, BIP.BIASCALC_CURRENT " & _
+            //"FROM ABC_BLEND_INTERVAL_PROPS BIP " & _
+            //"WHERE BIP.BLEND_ID=" & lngBlendId & " AND " & _
+            //"BIP.PROP_ID= " & lngPropID & " AND " & _
+            //"BIP.SEQUENCE " " >= " & intStartInterval & " AND BIP.SEQUENCE <= " & intStopInterval & " ORDER BY BIP.SEQUENCE ASC"
+            return await _blendMonitorContext.AbcBlendIntervalProps
+                    .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.PropId == propId
+                    && row.Sequence >= intStartInterval && row.Sequence <= intStopInterval)
+                    .OrderBy(row => row.Sequence)
+                    .ToListAsync<AbcBlendIntervalProps>();
+        }
+
+        public async Task<List<AbcBlendIntervalProps>> GetBiasCalData2(double blendId, double propId, int intStartInterval, int intStopInterval)
+        {
+            //"SELECT BIP.SEQUENCE, BIP.BIASCALC_CURRENT " & _
+            //"FROM ABC_BLEND_INTERVAL_PROPS BIP " & _
+            //"WHERE BIP.BLEND_ID=" & lngBlendId & " AND " & _
+            //"BIP.PROP_ID= " & lngPropID & " AND " & _
+            //"BIP.SEQUENCE " "<= " & intStartInterval & " ORDER BY BIP.SEQUENCE DESC"
+            return await _blendMonitorContext.AbcBlendIntervalProps
+                    .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.PropId == propId
+                    && row.Sequence <= intStopInterval)
+                    .OrderByDescending(row => row.Sequence)
+                    .ToListAsync<AbcBlendIntervalProps>();
+        }
+        public async Task<List<BldSampleProps>> GetBldSampleProps(double blendId,string sampleName)
+        {
+            //select bsp.blend_id, bsp.sample_name,
+            //bsp.prop_id, bsp.value, bsp.used_flag, bs.type as sample_type,
+            //bs.start_date, bs.stop_date,
+            //nvl(bs.start_volume, -1) as start_volume,
+            //nvl(bs.stop_volume, -1) as stop_volume
+            //from abc_blend_sample_props bsp, abc_blend_samples bs
+            //where bsp.blend_id = bs.blend_id and bsp.sample_name = bs.name(+) and
+            //bsp.used_flag = 'NO' and bsp.blend_id =? and
+            //  bsp.sample_name =?
+            //  order by start_date,start_volume
+
+            return await (from bsp in _blendMonitorContext.AbcBlendSampleProps
+                          from bs in _blendMonitorContext.AbcBlendSamples
+                          where bsp.BlendId == bs.BlendId && bsp.SampleName == bs.Name &&
+                          bsp.UsedFlag == "NO" && bsp.BlendId == blendId && bsp.SampleName == sampleName
+                          select new BldSampleProps
+                          {
+
+                              BlendId = bsp.BlendId,
+                              SampleName = bsp.SampleName,
+                              PropId = bsp.PropId,
+                              Value = bsp.Value,
+                              UsedFlag = bsp.UsedFlag,
+                              SampleType = bs.Type,
+                              StartDate = bs.StartDate,
+                              StopDate = bs.StopDate,
+                              StartVolume = (bs.StartVolume == null) ? -1 : bs.StartVolume,
+                              StopVolume = (bs.StopVolume == null) ? -1 : bs.StopVolume
+                          }).OrderBy(row => row.StartDate).ThenBy(row => row.StartVolume)
+                          .ToListAsync<BldSampleProps>();
+        }
+        public async Task<List<SampleIntvProps>> GetSampleIntvProps(double blendId, int intMatchIntv,double propID, double prdgrpId)
+        {
+            //select bip.feedback_pred, bip.bias, bip.fb_pred_bias,
+            //bip.biascalc_current, pp.biascalc_default, pp.biascalc_anz_fallback, pp.spot_filter,
+            //pp.composite_filter, pp.spot_bias_clamp, pp.composite_bias_clamp
+
+            //from abc_blend_interval_props bip, abc_prdgrp_props pp
+
+            //where bip.prop_id = pp.prop_id and
+            //bip.blend_id =? and bip.sequence =? and bip.prop_id =? and
+            //pp.prdgrp_id =?
+
+            return await (from bip in _blendMonitorContext.AbcBlendIntervalProps
+                          from pp in _blendMonitorContext.AbcPrdgrpProps
+                          where bip.PropId == pp.PropId && bip.BlendId == blendId && 
+                          bip.Sequence  == intMatchIntv && bip.PropId == propID &&
+                            pp.PrdgrpId == prdgrpId
+                          select new SampleIntvProps
+                          {
+                             FeedbackPred = bip.FeedbackPred,
+                             Bias = bip.Bias,
+                              FbPredBias = bip.FbPredBias,
+                              BiascalcCurrent = bip.BiascalcCurrent,
+                              BiascalcDefault = pp.BiascalcDefault,
+                              BiascalcAnzFallback = pp.BiascalcAnzFallback,
+                              SpotFilter = pp.SpotFilter,
+                              CompositeFilter = pp.CompositeFilter,
+                              SpotBiasClamp = pp.SpotBiasClamp,
+                              CompositeBiasClamp = pp.CompositeBiasClamp
+                          }).ToListAsync<SampleIntvProps>();
+        }
+        public async Task<List<PropNameModel>> GetPropName(double propId)
+        {
+            //select prop.name as prop_name, prop.uom_id, uom.units_name, uom.alias as units_alias 
+            //from abc_properties prop, abc_uom uom 
+            //where prop.uom_id = uom.id(+) and prop.id =?
+
+            return await (from prop in _blendMonitorContext.AbcProperties
+                          from uom in _blendMonitorContext.AbcUom
+                          where prop.UomId == uom.Id && prop.Id == propId
+                          select new PropNameModel
+                          {
+                              PropName = prop.Name,
+                              UomId = prop.UomId,
+                              UnitsName = uom.UnitsName,
+                              UnitsAlias = uom.Alias
+                          }).ToListAsync<PropNameModel>();
+        }
+        private double GetUnitNameID(string unitName)
+        {
+            //SELECT ID FROM ABC_UOM WHERE UNITS_NAME = '" & strFromUnitName & "')
+            return (_blendMonitorContext.AbcUom
+                        .Where<AbcUom>(row => row.UnitsName == unitName)
+                        .SingleOrDefault<AbcUom>()).Id;
+        }
+        public async Task<double> GetConvValue(double sngOrigValue, string strFromUnitName, string strToUnitName)
+        {
+            //"SELECT FACTOR, FUNCTION_NAME " & _
+            //"FROM ABC_UNIT_CONVERSION " & _
+            // WHERE FROM_UNIT = (SELECT ID FROM ABC_UOM WHERE UNITS_NAME ='" & strFromUnitName & "') AND " & _
+            //TO_UNIT = (SELECT ID FROM ABC_UOM WHERE UNITS_NAME ='" & strToUnitName & "')"
+            try
+            {
+                AbcUnitConversion Data = await _blendMonitorContext.AbcUnitConversion
+                                            .Where<AbcUnitConversion>(row => row.FromUnit == (GetUnitNameID(strFromUnitName))
+                                            && row.ToUnit == (GetUnitNameID(strToUnitName)))
+                                            .FirstAsync<AbcUnitConversion>();
+                double sngFactor = Convert.ToDouble(Data.Factor);
+                string strFunctionName = Data.FunctionName;
+                double value;
+                switch (strFunctionName)
+                {
+                    case ("CST2SSF"):
+                        value = HelperMethods.CST2SSF(sngOrigValue);
+                        break;
+                    case ("SSF2CST"):
+                        value = HelperMethods.SSF2CST(sngOrigValue);
+                        break;
+                    case ("API2SG"):
+                        value = HelperMethods.API2SG(sngOrigValue);
+                        break;
+                    case ("SG2API"):
+                        value = HelperMethods.SG2API(sngOrigValue);
+                        break;
+                    case ("DEGC2DEGF"):
+                        value = HelperMethods.DEGC2DEGF(sngOrigValue);
+                        break;
+                    case ("DEGF2DEGC"):
+                        value = HelperMethods.DEGF2DEGC(sngOrigValue);
+                        break;
+                    default:
+                        //'if no function exist then apply factor conversion
+                        value = Convert.ToDouble(sngOrigValue) * sngFactor;
+                        break;
+                }
+
+                return value;
+            }
+            catch (Exception ex)
+            {
+                if (strFromUnitName != strToUnitName)
+                {
+                    //code
+                    //        'The conversion from ^1 unit to ^2 unit is not found in unit conversion table. Original value was not modified.
+                    //deABC.cmdLogMessage 6860, App.Title, "UNIT_CONVERSION", _
+                    //    strFromUnitName, strToUnitName, "", "", "", "", strMsgOK
+                }
+                return sngOrigValue;
+            }
+        }
+        public async Task<int> setUnfiltBias(double dblUnfilBias, double blendId, double propId, int vntIntvNum, int intStopInterval, int intMatchingIntv)
+        {
+            //"UPDATE ABC_BLEND_INTERVAL_PROPS SET UNFILT_BIAS=" & dblUnfilBias &
+            //" WHERE BLEND_ID = " & curblend.lngID & "  AND PROP_ID=" & vntPropID.Value & " AND " &
+            //" (SEQUENCE IN (SELECT BIP.SEQUENCE FROM ABC_BLEND_INTERVAL_PROPS BIP WHERE BIP.BLEND_ID = " &
+            //curblend.lngID & " AND BIP.PROP_ID=" & vntPropID.Value & " AND BIP.SEQUENCE BETWEEN " & vntIntvNum &
+            //" AND " & intStopInterval & " AND BIP.BIASCALC_CURRENT NOT IN ('ANALYZER','NOCALC')) OR (SEQUENCE > " & intStopInterval & " AND " &
+            //"SEQUENCE <=" & intMatchingIntv & "))";
+
+            List<string> BiasList = new List<string>() { "ANALYZER", "NOCALC" };
+            List<double> Sequences = await _blendMonitorContext.AbcBlendIntervalProps
+                                    .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.PropId == propId
+                                    && row.Sequence <= vntIntvNum && row.Sequence >= intStopInterval && !BiasList.Contains(row.BiascalcCurrent))
+                                    .Select(row => row.Sequence)
+                                    .ToListAsync<double>();
+            AbcBlendIntervalProps Data = await _blendMonitorContext.AbcBlendIntervalProps
+                                            .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.PropId == propId &&
+                                            (Sequences.Contains(row.Sequence) || (row.Sequence > intStopInterval && row.Sequence <= intMatchingIntv)))
+                                            .FirstOrDefaultAsync<AbcBlendIntervalProps>();
+            Data.UnfiltBias = dblUnfilBias;
+
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+
+        public async Task<int> setBias(double dblIntBias, double blendId, double propId, int vntIntvNum, int intStopInterval, int intMatchingIntv)
+        {
+            //"UPDATE ABC_BLEND_INTERVAL_PROPS SET BIAS= " & dblIntBias &
+            //" WHERE BLEND_ID = " & curblend.lngID & "  AND PROP_ID=" & vntPropID.Value & " AND " &
+            //" (SEQUENCE IN (SELECT BIP.SEQUENCE FROM ABC_BLEND_INTERVAL_PROPS BIP WHERE BIP.BLEND_ID = " &
+            //curblend.lngID & " AND BIP.PROP_ID=" & vntPropID.Value & " AND BIP.SEQUENCE BETWEEN " & vntIntvNum &
+            //" AND " & intStopInterval & " AND BIP.BIASCALC_CURRENT NOT IN ('ANALYZER','NOCALC')) OR (SEQUENCE > " & intStopInterval & " AND " &
+            //"SEQUENCE <=" & intMatchingIntv & "))"
+
+            List<string> BiasList = new List<string>() { "ANALYZER", "NOCALC" };
+            List<double> Sequences = await _blendMonitorContext.AbcBlendIntervalProps
+                                    .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.PropId == propId
+                                    && row.Sequence <= vntIntvNum && row.Sequence >= intStopInterval && !BiasList.Contains(row.BiascalcCurrent))
+                                    .Select(row => row.Sequence)
+                                    .ToListAsync<double>();
+            AbcBlendIntervalProps Data = await _blendMonitorContext.AbcBlendIntervalProps
+                                            .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.PropId == propId &&
+                                            (Sequences.Contains(row.Sequence) || (row.Sequence > intStopInterval && row.Sequence <= intMatchingIntv)))
+                                            .FirstOrDefaultAsync<AbcBlendIntervalProps>();
+            Data.Bias = dblIntBias;
+
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> setBiasAndUnfiltBias(double dblIntBias,double dblUnfilBias, double blendId, double propId, int vntIntvNum, int intMatchingIntv)
+        {
+            //"UPDATE ABC_BLEND_INTERVAL_PROPS SET BIAS= " & dblIntBias & "," &
+            //"UNFILT_BIAS=" & dblUnfilBias & " WHERE BLEND_ID = " & curblend.lngID & " AND SEQUENCE < " & vntIntvNum & " AND " &
+            //"SEQUENCE >=" & intMatchingIntv & " AND PROP_ID=" & vntPropID.Value
+           
+            List<AbcBlendIntervalProps> Data = await _blendMonitorContext.AbcBlendIntervalProps
+                                            .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId &&
+                                             row.Sequence < vntIntvNum && row.Sequence >= intMatchingIntv && row.PropId == propId)
+                                            .ToListAsync<AbcBlendIntervalProps>();
+            foreach (AbcBlendIntervalProps obj in Data)
+            {
+                obj.Bias = dblIntBias;
+                obj.UnfiltBias = dblUnfilBias;
+            }            
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<List<double>> GetPrevIntBias(double blendId, int IntvNum,double propID)
+        {
+            //select NVL(bias,0) AS bias
+            //from abc_blend_interval_props
+            //where blend_id = ? and sequence =? and prop_id =?
+            return await _blendMonitorContext.AbcBlendIntervalProps
+                            .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId && row.Sequence == IntvNum && row.PropId == propID)
+                            .Select(row => (row.Bias == null) ? 0 : Convert.ToDouble(row.Bias))
+                            .ToListAsync<double>();
+        }
+        public async Task<int> SetModelErrExistsFlag(string txt, double blendId, double propId)
+        {
+            //update abc_blend_props set model_err_exists_flag = ? where blend_id = ? and prop_id = ?
+            AbcBlendProps Data = await _blendMonitorContext.AbcBlendProps
+                                    .Where<AbcBlendProps>(row => row.BlendId == blendId && row.PropId == propId)
+                                    .FirstOrDefaultAsync<AbcBlendProps>();
+            Data.ModelErrExistsFlag = txt;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetModelErrClrdFlag( double blendId, double propId)
+        {
+            //update abc_blend_props set model_err_exists_flag = 'NO', model_err_clrd_flag = 'YES' 
+            //where blend_id = ? and prop_id = ? and upper(model_err_exists_flag) = 'YES' and upper(model_err_clrd_flag) = 'NO'
+            AbcBlendProps Data = await _blendMonitorContext.AbcBlendProps
+                                    .Where<AbcBlendProps>(row => row.BlendId == blendId && row.PropId == propId
+                                    && row.ModelErrExistsFlag.ToUpper() == "YES" && row.ModelErrClrdFlag.ToUpper() == "NO")
+                                    .FirstOrDefaultAsync<AbcBlendProps>();
+            Data.ModelErrExistsFlag = "NO";
+            Data.ModelErrClrdFlag = "YES";
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetUsedFlag(double blendId, double propId, string strSampleName)
+        {
+            //"UPDATE ABC_BLEND_SAMPLE_PROPS SET USED_FLAG='YES' " &
+            //"WHERE BLEND_ID = " & curblend.lngID & " AND SAMPLE_NAME='" & strSampleName & "' AND " &
+            //"PROP_ID=" & vntPropID.Value
+            AbcBlendSampleProps Data = await _blendMonitorContext.AbcBlendSampleProps
+                                            .Where<AbcBlendSampleProps>(row => row.BlendId == blendId && row.SampleName == strSampleName 
+                                            && row.PropId == propId).FirstOrDefaultAsync<AbcBlendSampleProps>();
+            Data.UsedFlag = "YES";
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetIntCalcPropertyFlag(double blendId, double propId, int vntIntvNum)
+        {
+            //update abc_blend_interval_props set calc_property_flag = 'NO'
+            //where blend_id = ? and prop_id = ? and sequence <= ? and
+            //calc_property_flag = 'YES'
+
+            AbcBlendIntervalProps Data = await _blendMonitorContext.AbcBlendIntervalProps
+                                            .Where<AbcBlendIntervalProps>(row => row.BlendId == blendId &&
+                                             row.Sequence <= vntIntvNum && row.PropId == propId && row.CalcPropertyFlag == "YES")
+                                            .FirstOrDefaultAsync<AbcBlendIntervalProps>();
+            Data.CalcPropertyFlag = "NO";
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
         public async Task<string> LogMessage(int msgID, string prgm1, string gnrlText, string prgm2, string prgm3, string prgm4, string prgm5,
             string prgm6, string prgm7, string res)
         {

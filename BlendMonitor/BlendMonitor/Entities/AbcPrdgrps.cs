@@ -5,6 +5,12 @@ namespace BlendMonitor.Entities
 {
     public partial class AbcPrdgrps
     {
+        public AbcPrdgrps()
+        {
+            AbcPrdAdditives = new HashSet<AbcPrdAdditives>();
+            AbcPumps = new HashSet<AbcPumps>();
+        }
+
         public double Id { get; set; }
         public string Name { get; set; }
         public string Alias { get; set; }
@@ -21,5 +27,7 @@ namespace BlendMonitor.Entities
 
         public virtual AbcIcons Icon { get; set; }
         public virtual AbcUom VolumeUom { get; set; }
+        public virtual ICollection<AbcPrdAdditives> AbcPrdAdditives { get; set; }
+        public virtual ICollection<AbcPumps> AbcPumps { get; set; }
     }
 }

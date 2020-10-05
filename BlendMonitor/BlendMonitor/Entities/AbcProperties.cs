@@ -10,6 +10,7 @@ namespace BlendMonitor.Entities
             AbcAnzHdrProps = new HashSet<AbcAnzHdrProps>();
             AbcBlendIntervalProps = new HashSet<AbcBlendIntervalProps>();
             AbcBlendProps = new HashSet<AbcBlendProps>();
+            AbcBlendSampleProps = new HashSet<AbcBlendSampleProps>();
             AbcCalcCoefficients = new HashSet<AbcCalcCoefficients>();
             AbcLabTankData = new HashSet<AbcLabTankData>();
             AbcPrdgrpMatProps = new HashSet<AbcPrdgrpMatProps>();
@@ -37,6 +38,7 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcAnzHdrProps> AbcAnzHdrProps { get; set; }
         public virtual ICollection<AbcBlendIntervalProps> AbcBlendIntervalProps { get; set; }
         public virtual ICollection<AbcBlendProps> AbcBlendProps { get; set; }
+        public virtual ICollection<AbcBlendSampleProps> AbcBlendSampleProps { get; set; }
         public virtual ICollection<AbcCalcCoefficients> AbcCalcCoefficients { get; set; }
         public virtual ICollection<AbcLabTankData> AbcLabTankData { get; set; }
         public virtual ICollection<AbcPrdgrpMatProps> AbcPrdgrpMatProps { get; set; }

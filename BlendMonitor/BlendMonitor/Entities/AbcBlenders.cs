@@ -10,6 +10,7 @@ namespace BlendMonitor.Entities
             AbcAnzHdrProps = new HashSet<AbcAnzHdrProps>();
             AbcBlenderComps = new HashSet<AbcBlenderComps>();
             AbcBlends = new HashSet<AbcBlends>();
+            AbcCompLineups = new HashSet<AbcCompLineups>();
             AbcProdLineups = new HashSet<AbcProdLineups>();
             AbcStations = new HashSet<AbcStations>();
         }
@@ -128,6 +129,7 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcAnzHdrProps> AbcAnzHdrProps { get; set; }
         public virtual ICollection<AbcBlenderComps> AbcBlenderComps { get; set; }
         public virtual ICollection<AbcBlends> AbcBlends { get; set; }
+        public virtual ICollection<AbcCompLineups> AbcCompLineups { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineups { get; set; }
         public virtual ICollection<AbcStations> AbcStations { get; set; }
     }
