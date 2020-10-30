@@ -256,6 +256,12 @@ namespace BlendMonitor
             FAILURE = -1
         }
 
+        public enum InservOutserv
+        {
+            IN_SERV,
+            OUT_SERV,
+        }
+
         public enum YesNo
         {
             NO,
@@ -293,6 +299,101 @@ namespace BlendMonitor
             LINEPROP,
 
             OPTIMIZE,
+        }
+
+        public enum BldrsDataFieldIdices
+        {
+
+            BLDR_ID,
+
+            PRDGRP_ID,
+
+            TOT_FL_TID,
+
+            RBC_ST_TID,
+
+            RBC_MD_TID,
+
+            LC_GL_FLAG,
+
+            BLD_ID_TID,
+
+            PRD_TID,
+
+            TGT_VOL_TID,
+
+            RBC_VOL_SP_FB_TID,
+
+            TOT_VOL_TID,
+
+            TGT_RATE_TID,
+
+            START_TID,
+
+            STOP_TID,
+
+            PAUSE_TID,
+
+            RESTART_TID,
+
+            DWNLD_OK_TID,
+
+            DWNLDING_TID,
+
+            RBC_WDOG_TID,
+
+            IN_SER_FLAG,
+
+            BLD_DESC_TID,
+
+            // JAIME:   Added to download the Grade||bld description  Aug 17/2000
+            START_OK_TID,
+
+            // JAIME:   Added to get the Start Ok Flag from the RBC   Oct 01/2000
+            RUNDN_FLAG,
+
+            // JAIME:   Added to get the Rundn Flag from the RBC   Nov 21/2000
+            SWING_OCCURRED_TID,
+
+            // JAIME:   Added to get the SWING_OCURRED_TID from the RBC   Nov 21/2000
+            SWING_TID,
+
+            // JAIME:   Added to get the SWING_TID from the RBC   Nov 21/2000
+            COMM_FLAG,
+
+            // JAIME:   Added to get the Comm Flag  Feb 01/2001
+            //   RBC_RATE_SP_FB_TID 'March 12/2001  Added to get target rate fb
+            ON_SPEC_VOL,
+
+            // JAIME:   Added to get the on spec vol  March 27/2001
+            DOWNLOAD_TYPE,
+
+            // Jaime:   Added to get the Download type for a blender  April 12/2001
+            OPTIMIZE_FLAG,
+
+            // Jaime:   Added to get the Optimize Flag for a blender  May 16/2001
+            calcprop_flag,
+
+            // Jaime:   Added to get the CalcProp_flag for a blender  May 16/2001
+            SWING_EXIST_TID,
+
+            // Jaime:   Added to get the SWING_EXIST_TID for a blender  Aug 01/2001
+            SWING_VOL_TID,
+
+            // Jaime:   Added to get the SWING_VOL_TID for a blender  Aug 01/2001
+            ANZR_START_DELAY,
+
+            // Jaime:  Added to get the ANZ_START_DELAY for a blender  Sep 10/2001
+            DCS_BLNAME_FB_TID,
+
+            // Tag that holds the fb blend name in RBC
+            GRADE_TID,
+
+            // JO - Mar. 17, 04: new field added
+            STOP_OPT_VOL,
+
+            // RW 28-Mar-2012 for PreemL PQ-19
+            ETHANOL_FLAG,
         }
     }
 }

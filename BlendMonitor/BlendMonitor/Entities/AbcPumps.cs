@@ -8,6 +8,7 @@ namespace BlendMonitor.Entities
         public AbcPumps()
         {
             AbcCompLineupEqp = new HashSet<AbcCompLineupEqp>();
+            AbcProdLineupEqp = new HashSet<AbcProdLineupEqp>();
         }
 
         public double Id { get; set; }
@@ -33,5 +34,6 @@ namespace BlendMonitor.Entities
         public virtual AbcPrdgrps Prdgrp { get; set; }
         public virtual AbcTags StatusTag { get; set; }
         public virtual ICollection<AbcCompLineupEqp> AbcCompLineupEqp { get; set; }
+        public virtual ICollection<AbcProdLineupEqp> AbcProdLineupEqp { get; set; }
     }
 }

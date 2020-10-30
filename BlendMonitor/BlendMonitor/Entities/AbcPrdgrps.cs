@@ -8,6 +8,8 @@ namespace BlendMonitor.Entities
         public AbcPrdgrps()
         {
             AbcPrdAdditives = new HashSet<AbcPrdAdditives>();
+            AbcPrdPropSpecs = new HashSet<AbcPrdPropSpecs>();
+            AbcPrdgrpUsages = new HashSet<AbcPrdgrpUsages>();
             AbcPumps = new HashSet<AbcPumps>();
         }
 
@@ -28,6 +30,8 @@ namespace BlendMonitor.Entities
         public virtual AbcIcons Icon { get; set; }
         public virtual AbcUom VolumeUom { get; set; }
         public virtual ICollection<AbcPrdAdditives> AbcPrdAdditives { get; set; }
+        public virtual ICollection<AbcPrdPropSpecs> AbcPrdPropSpecs { get; set; }
+        public virtual ICollection<AbcPrdgrpUsages> AbcPrdgrpUsages { get; set; }
         public virtual ICollection<AbcPumps> AbcPumps { get; set; }
     }
 }

@@ -9,6 +9,7 @@ namespace BlendMonitor.Entities
         {
             AbcBlendStations = new HashSet<AbcBlendStations>();
             AbcCompLineupEqp = new HashSet<AbcCompLineupEqp>();
+            AbcProdLineupEqp = new HashSet<AbcProdLineupEqp>();
         }
 
         public double Id { get; set; }
@@ -76,5 +77,6 @@ namespace BlendMonitor.Entities
         public virtual AbcTags WildFlagT { get; set; }
         public virtual ICollection<AbcBlendStations> AbcBlendStations { get; set; }
         public virtual ICollection<AbcCompLineupEqp> AbcCompLineupEqp { get; set; }
+        public virtual ICollection<AbcProdLineupEqp> AbcProdLineupEqp { get; set; }
     }
 }

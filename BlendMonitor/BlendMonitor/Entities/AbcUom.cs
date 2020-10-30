@@ -14,6 +14,7 @@ namespace BlendMonitor.Entities
             AbcBlendsFlowUom = new HashSet<AbcBlends>();
             AbcBlendsVolUom = new HashSet<AbcBlends>();
             AbcCalcRoutines = new HashSet<AbcCalcRoutines>();
+            AbcPrdgrpUsages = new HashSet<AbcPrdgrpUsages>();
             AbcPrdgrps = new HashSet<AbcPrdgrps>();
             AbcProjDefaults = new HashSet<AbcProjDefaults>();
             AbcProperties = new HashSet<AbcProperties>();
@@ -45,6 +46,7 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlends> AbcBlendsFlowUom { get; set; }
         public virtual ICollection<AbcBlends> AbcBlendsVolUom { get; set; }
         public virtual ICollection<AbcCalcRoutines> AbcCalcRoutines { get; set; }
+        public virtual ICollection<AbcPrdgrpUsages> AbcPrdgrpUsages { get; set; }
         public virtual ICollection<AbcPrdgrps> AbcPrdgrps { get; set; }
         public virtual ICollection<AbcProjDefaults> AbcProjDefaults { get; set; }
         public virtual ICollection<AbcProperties> AbcProperties { get; set; }

@@ -12,7 +12,11 @@
           "Microsoft.EntityFrameworkCore.SqlServer": "3.1.8",
           "Microsoft.EntityFrameworkCore.Tools": "3.1.8",
           "Microsoft.Extensions.Hosting": "3.1.8",
-          "Microsoft.Extensions.Hosting.Abstractions": "3.1.8"
+          "Microsoft.Extensions.Hosting.Abstractions": "3.1.8",
+          "ABBAdvancedBlendOptimizerCommonInterface": "1.0.0.0",
+          "ABBAdvancedBlendOptimizerPreprocessor": "1.0.0.0",
+          "ABBAdvancedBlendOptimizerSQL": "1.0.0.0",
+          "SharedGAMSInterface": "1.0.0.0"
         },
         "runtime": {
           "BlendMonitor.dll": {}
@@ -1265,6 +1269,38 @@
           "System.Xml.ReaderWriter": "4.3.0",
           "System.Xml.XmlDocument": "4.3.0"
         }
+      },
+      "ABBAdvancedBlendOptimizerCommonInterface/1.0.0.0": {
+        "runtime": {
+          "ABBAdvancedBlendOptimizerCommonInterface.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "ABBAdvancedBlendOptimizerPreprocessor/1.0.0.0": {
+        "runtime": {
+          "ABBAdvancedBlendOptimizerPreprocessor.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "ABBAdvancedBlendOptimizerSQL/1.0.0.0": {
+        "runtime": {
+          "ABBAdvancedBlendOptimizerSQL.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "SharedGAMSInterface/1.0.0.0": {
+        "runtime": {
+          "SharedGAMSInterface.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
       }
     }
   },
@@ -2106,6 +2142,26 @@
       "sha512": "sha512-MYoTCP7EZ98RrANESW05J5ZwskKDoN0AuZ06ZflnowE50LTpbR5yRg3tHckTVm5j/m47stuGgCrCHWePyHS70Q==",
       "path": "system.xml.xmlserializer/4.3.0",
       "hashPath": "system.xml.xmlserializer.4.3.0.nupkg.sha512"
+    },
+    "ABBAdvancedBlendOptimizerCommonInterface/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ABBAdvancedBlendOptimizerPreprocessor/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ABBAdvancedBlendOptimizerSQL/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "SharedGAMSInterface/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
     }
   }
 }

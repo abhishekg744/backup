@@ -8,6 +8,7 @@ namespace BlendMonitor.Entities
         public AbcBlendDest()
         {
             AbcBlendDestProps = new HashSet<AbcBlendDestProps>();
+            AbcBlendDestSeq = new HashSet<AbcBlendDestSeq>();
         }
 
         public double BlendId { get; set; }
@@ -29,5 +30,6 @@ namespace BlendMonitor.Entities
         public virtual AbcProdLineups Lineup { get; set; }
         public virtual AbcTanks Tank { get; set; }
         public virtual ICollection<AbcBlendDestProps> AbcBlendDestProps { get; set; }
+        public virtual ICollection<AbcBlendDestSeq> AbcBlendDestSeq { get; set; }
     }
 }

@@ -10,6 +10,7 @@ namespace BlendMonitor.Entities
             AbcBlendComps = new HashSet<AbcBlendComps>();
             AbcLabTankData = new HashSet<AbcLabTankData>();
             AbcPrdgrpMatProps = new HashSet<AbcPrdgrpMatProps>();
+            AbcPrdgrpUsages = new HashSet<AbcPrdgrpUsages>();
         }
 
         public double Id { get; set; }
@@ -24,5 +25,6 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlendComps> AbcBlendComps { get; set; }
         public virtual ICollection<AbcLabTankData> AbcLabTankData { get; set; }
         public virtual ICollection<AbcPrdgrpMatProps> AbcPrdgrpMatProps { get; set; }
+        public virtual ICollection<AbcPrdgrpUsages> AbcPrdgrpUsages { get; set; }
     }
 }

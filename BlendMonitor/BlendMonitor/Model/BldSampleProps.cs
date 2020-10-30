@@ -8,6 +8,7 @@ namespace BlendMonitor.Model
     {
         public double BlendId { get; set; }
         public string SampleName { get; set; }
+        public string ProcessSampleFlag { get; set; }
         public double PropId { get; set; }
         public double? Value { get; set; }
         public string SampleType{ get; set; }

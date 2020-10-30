@@ -22,6 +22,7 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcBlendComps> AbcBlendComps { get; set; }
         public virtual DbSet<AbcBlendDest> AbcBlendDest { get; set; }
         public virtual DbSet<AbcBlendDestProps> AbcBlendDestProps { get; set; }
+        public virtual DbSet<AbcBlendDestSeq> AbcBlendDestSeq { get; set; }
         public virtual DbSet<AbcBlendIntervalComps> AbcBlendIntervalComps { get; set; }
         public virtual DbSet<AbcBlendIntervalProps> AbcBlendIntervalProps { get; set; }
         public virtual DbSet<AbcBlendIntervals> AbcBlendIntervals { get; set; }
@@ -32,6 +33,8 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcBlendStations> AbcBlendStations { get; set; }
         public virtual DbSet<AbcBlendSwings> AbcBlendSwings { get; set; }
         public virtual DbSet<AbcBlenderComps> AbcBlenderComps { get; set; }
+        public virtual DbSet<AbcBlenderDest> AbcBlenderDest { get; set; }
+        public virtual DbSet<AbcBlenderSources> AbcBlenderSources { get; set; }
         public virtual DbSet<AbcBlenders> AbcBlenders { get; set; }
         public virtual DbSet<AbcBlends> AbcBlends { get; set; }
         public virtual DbSet<AbcCalcCoefficients> AbcCalcCoefficients { get; set; }
@@ -44,9 +47,12 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcLineupGeo> AbcLineupGeo { get; set; }
         public virtual DbSet<AbcMaterials> AbcMaterials { get; set; }
         public virtual DbSet<AbcPrdAdditives> AbcPrdAdditives { get; set; }
+        public virtual DbSet<AbcPrdPropSpecs> AbcPrdPropSpecs { get; set; }
         public virtual DbSet<AbcPrdgrpMatProps> AbcPrdgrpMatProps { get; set; }
         public virtual DbSet<AbcPrdgrpProps> AbcPrdgrpProps { get; set; }
+        public virtual DbSet<AbcPrdgrpUsages> AbcPrdgrpUsages { get; set; }
         public virtual DbSet<AbcPrdgrps> AbcPrdgrps { get; set; }
+        public virtual DbSet<AbcProdLineupEqp> AbcProdLineupEqp { get; set; }
         public virtual DbSet<AbcProdLineups> AbcProdLineups { get; set; }
         public virtual DbSet<AbcPrograms> AbcPrograms { get; set; }
         public virtual DbSet<AbcProjDefaults> AbcProjDefaults { get; set; }
@@ -56,10 +62,12 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcRbcStates> AbcRbcStates { get; set; }
         public virtual DbSet<AbcScanGroups> AbcScanGroups { get; set; }
         public virtual DbSet<AbcStations> AbcStations { get; set; }
+        public virtual DbSet<AbcSwingCriteria> AbcSwingCriteria { get; set; }
         public virtual DbSet<AbcSwingStates> AbcSwingStates { get; set; }
         public virtual DbSet<AbcTags> AbcTags { get; set; }
         public virtual DbSet<AbcTankComposition> AbcTankComposition { get; set; }
         public virtual DbSet<AbcTankProps> AbcTankProps { get; set; }
+        public virtual DbSet<AbcTankStates> AbcTankStates { get; set; }
         public virtual DbSet<AbcTanks> AbcTanks { get; set; }
         public virtual DbSet<AbcTranstxt> AbcTranstxt { get; set; }
         public virtual DbSet<AbcUnitConversion> AbcUnitConversion { get; set; }
@@ -703,6 +711,58 @@ namespace BlendMonitor.Entities
                     .HasForeignKey(d => new { d.BlendId, d.TankId })
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_BL_TNK_BLEND_DEST_PROPS");
+            });
+
+            modelBuilder.Entity<AbcBlendDestSeq>(entity =>
+            {
+                entity.HasKey(e => new { e.BlendId, e.TankId, e.SwingSequence })
+                    .HasName("PK_BLEND_DEST_SEQ");
+
+                entity.ToTable("ABC_BLEND_DEST_SEQ");
+
+                entity.Property(e => e.BlendId).HasColumnName("BLEND_ID");
+
+                entity.Property(e => e.TankId).HasColumnName("TANK_ID");
+
+                entity.Property(e => e.SwingSequence).HasColumnName("SWING_SEQUENCE");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.TimeIn)
+                    .HasColumnName("TIME_IN")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.TimeOut)
+                    .HasColumnName("TIME_OUT")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.VolAdded).HasColumnName("VOL_ADDED");
+
+                entity.HasOne(d => d.AbcBlendDest)
+                    .WithMany(p => p.AbcBlendDestSeq)
+                    .HasForeignKey(d => new { d.BlendId, d.TankId })
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_BLEND_TANK_BLEND_DEST_SEQ");
             });
 
             modelBuilder.Entity<AbcBlendIntervalComps>(entity =>
@@ -1545,6 +1605,179 @@ namespace BlendMonitor.Entities
                     .WithMany(p => p.AbcBlenderCompsWildFlagT)
                     .HasForeignKey(d => d.WildFlagTid)
                     .HasConstraintName("FK_WILD_FLAG_TID_BLENDER_COMPS");
+            });
+
+            modelBuilder.Entity<AbcBlenderDest>(entity =>
+            {
+                entity.HasKey(e => new { e.BlenderId, e.TankId })
+                    .HasName("PK_BLENDER_DEST");
+
+                entity.ToTable("ABC_BLENDER_DEST");
+
+                entity.Property(e => e.BlenderId).HasColumnName("BLENDER_ID");
+
+                entity.Property(e => e.TankId).HasColumnName("TANK_ID");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.DefaultLineupId).HasColumnName("DEFAULT_LINEUP_ID");
+
+                entity.Property(e => e.DestSelectNameTid).HasColumnName("DEST_SELECT_NAME_TID");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.PreselectionTid).HasColumnName("PRESELECTION_TID");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.SelectionFbTid).HasColumnName("SELECTION_FB_TID");
+
+                entity.Property(e => e.SelectionTid).HasColumnName("SELECTION_TID");
+
+                entity.HasOne(d => d.Blender)
+                    .WithMany(p => p.AbcBlenderDest)
+                    .HasForeignKey(d => d.BlenderId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_BLENDER_ID_BLENDER_DEST");
+
+                entity.HasOne(d => d.DefaultLineup)
+                    .WithMany(p => p.AbcBlenderDest)
+                    .HasForeignKey(d => d.DefaultLineupId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_DEF_LINEUP_BLENDER_DEST");
+
+                entity.HasOne(d => d.DestSelectNameT)
+                    .WithMany(p => p.AbcBlenderDestDestSelectNameT)
+                    .HasForeignKey(d => d.DestSelectNameTid)
+                    .HasConstraintName("FK_DEST_SEL_TID_BLENDER_DEST");
+
+                entity.HasOne(d => d.PreselectionT)
+                    .WithMany(p => p.AbcBlenderDestPreselectionT)
+                    .HasForeignKey(d => d.PreselectionTid)
+                    .HasConstraintName("FK_PRESELECTION_BLENDER_DEST");
+
+                entity.HasOne(d => d.SelectionFbT)
+                    .WithMany(p => p.AbcBlenderDestSelectionFbT)
+                    .HasForeignKey(d => d.SelectionFbTid)
+                    .HasConstraintName("FK_SELECTIONFB_BLENDER_DEST");
+
+                entity.HasOne(d => d.SelectionT)
+                    .WithMany(p => p.AbcBlenderDestSelectionT)
+                    .HasForeignKey(d => d.SelectionTid)
+                    .HasConstraintName("FK_SELECTION_BLENDER_DEST");
+
+                entity.HasOne(d => d.Tank)
+                    .WithMany(p => p.AbcBlenderDest)
+                    .HasForeignKey(d => d.TankId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_TANK_ID_BLENDER_DEST");
+            });
+
+            modelBuilder.Entity<AbcBlenderSources>(entity =>
+            {
+                entity.HasKey(e => new { e.BlenderId, e.TankId })
+                    .HasName("PK_BLENDER_SOURCES");
+
+                entity.ToTable("ABC_BLENDER_SOURCES");
+
+                entity.Property(e => e.BlenderId).HasColumnName("BLENDER_ID");
+
+                entity.Property(e => e.TankId).HasColumnName("TANK_ID");
+
+                entity.Property(e => e.AltStorageMaxFlow).HasColumnName("ALT_STORAGE_MAX_FLOW");
+
+                entity.Property(e => e.AltStorageMinFlow).HasColumnName("ALT_STORAGE_MIN_FLOW");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.DefaultLineupId).HasColumnName("DEFAULT_LINEUP_ID");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.PreselectionTid).HasColumnName("PRESELECTION_TID");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.SelectionFbTid).HasColumnName("SELECTION_FB_TID");
+
+                entity.Property(e => e.SelectionTid).HasColumnName("SELECTION_TID");
+
+                entity.Property(e => e.StorageFlowTid).HasColumnName("STORAGE_FLOW_TID");
+
+                entity.Property(e => e.UseStorageControl)
+                    .HasColumnName("USE_STORAGE_CONTROL")
+                    .HasMaxLength(3)
+                    .IsUnicode(false);
+
+                entity.HasOne(d => d.Blender)
+                    .WithMany(p => p.AbcBlenderSources)
+                    .HasForeignKey(d => d.BlenderId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_BLENDER_ID_BLENDER_SOURCES");
+
+                entity.HasOne(d => d.DefaultLineup)
+                    .WithMany(p => p.AbcBlenderSources)
+                    .HasForeignKey(d => d.DefaultLineupId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_DEF_LINEUP_BLENDER_SOURCES");
+
+                entity.HasOne(d => d.PreselectionT)
+                    .WithMany(p => p.AbcBlenderSourcesPreselectionT)
+                    .HasForeignKey(d => d.PreselectionTid)
+                    .HasConstraintName("FK_PRESEL_TID_BLENDER_SRCS");
+
+                entity.HasOne(d => d.SelectionFbT)
+                    .WithMany(p => p.AbcBlenderSourcesSelectionFbT)
+                    .HasForeignKey(d => d.SelectionFbTid)
+                    .HasConstraintName("FK_SELECTIONFB_BLENDER_SOURCES");
+
+                entity.HasOne(d => d.SelectionT)
+                    .WithMany(p => p.AbcBlenderSourcesSelectionT)
+                    .HasForeignKey(d => d.SelectionTid)
+                    .HasConstraintName("FK_SELECTION_BLENDER_SOURCES");
+
+                entity.HasOne(d => d.StorageFlowT)
+                    .WithMany(p => p.AbcBlenderSourcesStorageFlowT)
+                    .HasForeignKey(d => d.StorageFlowTid)
+                    .HasConstraintName("FK_STRG_FLOW_TID_BDR_SOURCES");
+
+                entity.HasOne(d => d.Tank)
+                    .WithMany(p => p.AbcBlenderSources)
+                    .HasForeignKey(d => d.TankId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_TANK_ID_BLENDER_SOURCES");
             });
 
             modelBuilder.Entity<AbcBlenders>(entity =>
@@ -2846,6 +3079,98 @@ namespace BlendMonitor.Entities
                     .HasConstraintName("FK_PGID_PRD_ADDITIVES");
             });
 
+            modelBuilder.Entity<AbcPrdPropSpecs>(entity =>
+            {
+                entity.HasKey(e => new { e.PrdgrpId, e.MatId, e.PropId, e.GradeId })
+                    .HasName("PK_PRD_PROP_SPECS");
+
+                entity.ToTable("ABC_PRD_PROP_SPECS");
+
+                entity.Property(e => e.PrdgrpId).HasColumnName("PRDGRP_ID");
+
+                entity.Property(e => e.MatId).HasColumnName("MAT_ID");
+
+                entity.Property(e => e.PropId).HasColumnName("PROP_ID");
+
+                entity.Property(e => e.GradeId).HasColumnName("GRADE_ID");
+
+                entity.Property(e => e.AnalysisMethod)
+                    .HasColumnName("ANALYSIS_METHOD")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.BoDisplay)
+                    .IsRequired()
+                    .HasColumnName("BO_DISPLAY")
+                    .HasMaxLength(3)
+                    .IsUnicode(false)
+                    .HasDefaultValueSql("('YES')");
+
+                entity.Property(e => e.ControlMax).HasColumnName("CONTROL_MAX");
+
+                entity.Property(e => e.ControlMin).HasColumnName("CONTROL_MIN");
+
+                entity.Property(e => e.ControlSafetyMarginMax).HasColumnName("CONTROL_SAFETY_MARGIN_MAX");
+
+                entity.Property(e => e.ControlSafetyMarginMin).HasColumnName("CONTROL_SAFETY_MARGIN_MIN");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Giveawaycost).HasColumnName("GIVEAWAYCOST");
+
+                entity.Property(e => e.HlimMax).HasColumnName("HLIM_MAX");
+
+                entity.Property(e => e.HlimMin).HasColumnName("HLIM_MIN");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.SalesMax).HasColumnName("SALES_MAX");
+
+                entity.Property(e => e.SalesMin).HasColumnName("SALES_MIN");
+
+                entity.HasOne(d => d.Grade)
+                    .WithMany(p => p.AbcPrdPropSpecs)
+                    .HasForeignKey(d => d.GradeId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_GRADE_ID_PRD_PROP_SPECS");
+
+                entity.HasOne(d => d.Mat)
+                    .WithMany(p => p.AbcPrdPropSpecs)
+                    .HasForeignKey(d => d.MatId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_MAT_ID_PRD_PROP_SPECS");
+
+                entity.HasOne(d => d.Prdgrp)
+                    .WithMany(p => p.AbcPrdPropSpecs)
+                    .HasForeignKey(d => d.PrdgrpId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_PRDGRP_ID_PRD_PROP_SPECS");
+
+                entity.HasOne(d => d.Prop)
+                    .WithMany(p => p.AbcPrdPropSpecs)
+                    .HasForeignKey(d => d.PropId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_PROP_ID_PRD_PROP_SPECS");
+            });
+
             modelBuilder.Entity<AbcPrdgrpMatProps>(entity =>
             {
                 entity.HasKey(e => new { e.PrdgrpId, e.MatId, e.UsageId, e.PropId })
@@ -3036,6 +3361,79 @@ namespace BlendMonitor.Entities
                     .HasConstraintName("FK_PROP_ID_PRDGRP_PROPS");
             });
 
+            modelBuilder.Entity<AbcPrdgrpUsages>(entity =>
+            {
+                entity.HasKey(e => new { e.PrdgrpId, e.MatId, e.UsageId })
+                    .HasName("PK_PRDGRP_USAGES");
+
+                entity.ToTable("ABC_PRDGRP_USAGES");
+
+                entity.Property(e => e.PrdgrpId).HasColumnName("PRDGRP_ID");
+
+                entity.Property(e => e.MatId).HasColumnName("MAT_ID");
+
+                entity.Property(e => e.UsageId).HasColumnName("USAGE_ID");
+
+                entity.Property(e => e.Cost).HasColumnName("COST");
+
+                entity.Property(e => e.CostUomId).HasColumnName("COST_UOM_ID");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.NegDevCost).HasColumnName("NEG_DEV_COST");
+
+                entity.Property(e => e.PosDevCost).HasColumnName("POS_DEV_COST");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.StarblendProductType)
+                    .IsRequired()
+                    .HasColumnName("STARBLEND_PRODUCT_TYPE")
+                    .HasMaxLength(10)
+                    .IsUnicode(false);
+
+                entity.HasOne(d => d.CostUom)
+                    .WithMany(p => p.AbcPrdgrpUsages)
+                    .HasForeignKey(d => d.CostUomId)
+                    .HasConstraintName("FK_UOM_ID_PRDGRP_USAGES");
+
+                entity.HasOne(d => d.Mat)
+                    .WithMany(p => p.AbcPrdgrpUsages)
+                    .HasForeignKey(d => d.MatId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_MAT_ID_PRDGRP_USAGES");
+
+                entity.HasOne(d => d.Prdgrp)
+                    .WithMany(p => p.AbcPrdgrpUsages)
+                    .HasForeignKey(d => d.PrdgrpId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_PRDGRP_ID_PRDGRP_USAGES");
+
+                entity.HasOne(d => d.Usage)
+                    .WithMany(p => p.AbcPrdgrpUsages)
+                    .HasForeignKey(d => d.UsageId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_USAGE_ID_PRDGRP_USAGES");
+            });
+
             modelBuilder.Entity<AbcPrdgrps>(entity =>
             {
                 entity.ToTable("ABC_PRDGRPS");
@@ -3115,6 +3513,74 @@ namespace BlendMonitor.Entities
                     .HasForeignKey(d => d.VolumeUomId)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_VOL_UOM_ID_PRDGRPS");
+            });
+
+            modelBuilder.Entity<AbcProdLineupEqp>(entity =>
+            {
+                entity.HasKey(e => new { e.LineId, e.LineEqpOrder })
+                    .HasName("PK_PROD_LINEUP_EQP");
+
+                entity.ToTable("ABC_PROD_LINEUP_EQP");
+
+                entity.Property(e => e.LineId).HasColumnName("LINE_ID");
+
+                entity.Property(e => e.LineEqpOrder).HasColumnName("LINE_EQP_ORDER");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.PumpId).HasColumnName("PUMP_ID");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.SelectionTid).HasColumnName("SELECTION_TID");
+
+                entity.Property(e => e.StationId).HasColumnName("STATION_ID");
+
+                entity.Property(e => e.TransferLineId).HasColumnName("TRANSFER_LINE_ID");
+
+                entity.HasOne(d => d.Line)
+                    .WithMany(p => p.AbcProdLineupEqp)
+                    .HasForeignKey(d => d.LineId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_LINE_ID_PROD_LINEUP_EQP");
+
+                entity.HasOne(d => d.Pump)
+                    .WithMany(p => p.AbcProdLineupEqp)
+                    .HasForeignKey(d => d.PumpId)
+                    .HasConstraintName("FK_PUMP_ID_PROD_LINEUP_EQP");
+
+                entity.HasOne(d => d.SelectionT)
+                    .WithMany(p => p.AbcProdLineupEqp)
+                    .HasForeignKey(d => d.SelectionTid)
+                    .HasConstraintName("FK_SELECTION_TID_PROD_LINE_EQP");
+
+                entity.HasOne(d => d.Station)
+                    .WithMany(p => p.AbcProdLineupEqp)
+                    .HasForeignKey(d => d.StationId)
+                    .HasConstraintName("FK_STATION_ID_PROD_LINEUP_EQP");
+
+                entity.HasOne(d => d.TransferLine)
+                    .WithMany(p => p.AbcProdLineupEqp)
+                    .HasForeignKey(d => d.TransferLineId)
+                    .HasConstraintName("FK_XFR_LINE_PROD_LINEUP_EQP");
             });
 
             modelBuilder.Entity<AbcProdLineups>(entity =>
@@ -4619,6 +5085,56 @@ namespace BlendMonitor.Entities
                     .HasConstraintName("FK_WILD_FLAG_TID_STATIONS");
             });
 
+            modelBuilder.Entity<AbcSwingCriteria>(entity =>
+            {
+                entity.ToTable("ABC_SWING_CRITERIA");
+
+                entity.HasIndex(e => e.Name)
+                    .HasName("UQ_NAME_SWING_CRITERIA")
+                    .IsUnique();
+
+                entity.Property(e => e.Id).HasColumnName("ID");
+
+                entity.Property(e => e.Alias)
+                    .IsRequired()
+                    .HasColumnName("ALIAS")
+                    .HasMaxLength(12)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Description)
+                    .HasColumnName("DESCRIPTION")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasColumnName("NAME")
+                    .HasMaxLength(12)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+            });
+
             modelBuilder.Entity<AbcSwingStates>(entity =>
             {
                 entity.HasKey(e => e.Name)
@@ -4907,6 +5423,58 @@ namespace BlendMonitor.Entities
                     .HasForeignKey(d => d.TankId)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_TANK_ID_TANK_PROPS");
+            });
+
+            modelBuilder.Entity<AbcTankStates>(entity =>
+            {
+                entity.HasKey(e => e.Name)
+                    .HasName("PK_TANK_STATES");
+
+                entity.ToTable("ABC_TANK_STATES");
+
+                entity.HasIndex(e => e.Value)
+                    .HasName("UQ_VALUE_TANK_STATES")
+                    .IsUnique();
+
+                entity.Property(e => e.Name)
+                    .HasColumnName("NAME")
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.Alias)
+                    .IsRequired()
+                    .HasColumnName("ALIAS")
+                    .HasMaxLength(20)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Description)
+                    .HasColumnName("DESCRIPTION")
+                    .HasMaxLength(72)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.Value).HasColumnName("VALUE");
             });
 
             modelBuilder.Entity<AbcTanks>(entity =>

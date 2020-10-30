@@ -78,7 +78,7 @@ namespace BlendMonitor
         }
 
         // *********** CheckNewIntvRecs ***********
-        public static async void CheckNewIntvRecs(double lngBldID, int intIntvNum, DebugLevels enumDebugLevel, DateTime dteCurTime)
+        public static async Task<int> CheckNewIntvRecs(double lngBldID, int intIntvNum, DebugLevels enumDebugLevel, DateTime dteCurTime)
         {
             bool blnIntvExists;
             string strSqlIntvProps;
@@ -133,6 +133,7 @@ namespace BlendMonitor
             {
                 await _repository.SetBiasCalcCurrent3(lngBldID, intIntvNum);
             }
+            return 0;
         }
 
         // return time conversion factor for (time unit -> day)

@@ -12,8 +12,11 @@ namespace BlendMonitor.Entities
             AbcBlendSwingsFromTk = new HashSet<AbcBlendSwings>();
             AbcBlendSwingsToTk = new HashSet<AbcBlendSwings>();
             AbcBlenderComps = new HashSet<AbcBlenderComps>();
+            AbcBlenderDest = new HashSet<AbcBlenderDest>();
+            AbcBlenderSources = new HashSet<AbcBlenderSources>();
             AbcCompLineups = new HashSet<AbcCompLineups>();
             AbcLabTankData = new HashSet<AbcLabTankData>();
+            AbcProdLineupEqp = new HashSet<AbcProdLineupEqp>();
             AbcProdLineupsDestination = new HashSet<AbcProdLineups>();
             AbcProdLineupsTransferLine = new HashSet<AbcProdLineups>();
             AbcTankComposition = new HashSet<AbcTankComposition>();
@@ -84,8 +87,11 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlendSwings> AbcBlendSwingsFromTk { get; set; }
         public virtual ICollection<AbcBlendSwings> AbcBlendSwingsToTk { get; set; }
         public virtual ICollection<AbcBlenderComps> AbcBlenderComps { get; set; }
+        public virtual ICollection<AbcBlenderDest> AbcBlenderDest { get; set; }
+        public virtual ICollection<AbcBlenderSources> AbcBlenderSources { get; set; }
         public virtual ICollection<AbcCompLineups> AbcCompLineups { get; set; }
         public virtual ICollection<AbcLabTankData> AbcLabTankData { get; set; }
+        public virtual ICollection<AbcProdLineupEqp> AbcProdLineupEqp { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsDestination { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsTransferLine { get; set; }
         public virtual ICollection<AbcTankComposition> AbcTankComposition { get; set; }

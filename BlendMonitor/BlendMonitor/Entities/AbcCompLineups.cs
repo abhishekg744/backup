@@ -7,6 +7,7 @@ namespace BlendMonitor.Entities
     {
         public AbcCompLineups()
         {
+            AbcBlenderSources = new HashSet<AbcBlenderSources>();
             AbcCompLineupEqp = new HashSet<AbcCompLineupEqp>();
         }
 
@@ -31,6 +32,7 @@ namespace BlendMonitor.Entities
         public virtual AbcLineupGeo LineGeo { get; set; }
         public virtual AbcTags SelectionT { get; set; }
         public virtual AbcTanks Source { get; set; }
+        public virtual ICollection<AbcBlenderSources> AbcBlenderSources { get; set; }
         public virtual ICollection<AbcCompLineupEqp> AbcCompLineupEqp { get; set; }
     }
 }

@@ -21,6 +21,14 @@ namespace BlendMonitor.Entities
             AbcBlenderCompsSwingT = new HashSet<AbcBlenderComps>();
             AbcBlenderCompsTotCompVolT = new HashSet<AbcBlenderComps>();
             AbcBlenderCompsWildFlagT = new HashSet<AbcBlenderComps>();
+            AbcBlenderDestDestSelectNameT = new HashSet<AbcBlenderDest>();
+            AbcBlenderDestPreselectionT = new HashSet<AbcBlenderDest>();
+            AbcBlenderDestSelectionFbT = new HashSet<AbcBlenderDest>();
+            AbcBlenderDestSelectionT = new HashSet<AbcBlenderDest>();
+            AbcBlenderSourcesPreselectionT = new HashSet<AbcBlenderSources>();
+            AbcBlenderSourcesSelectionFbT = new HashSet<AbcBlenderSources>();
+            AbcBlenderSourcesSelectionT = new HashSet<AbcBlenderSources>();
+            AbcBlenderSourcesStorageFlowT = new HashSet<AbcBlenderSources>();
             AbcBlendersBlendDescT = new HashSet<AbcBlenders>();
             AbcBlendersBlendIdT = new HashSet<AbcBlenders>();
             AbcBlendersDcsBlnameFbT = new HashSet<AbcBlenders>();
@@ -59,6 +67,7 @@ namespace BlendMonitor.Entities
             AbcBlendersTotalVolT = new HashSet<AbcBlenders>();
             AbcCompLineupEqp = new HashSet<AbcCompLineupEqp>();
             AbcCompLineups = new HashSet<AbcCompLineups>();
+            AbcProdLineupEqp = new HashSet<AbcProdLineupEqp>();
             AbcProdLineupsPreselectionT = new HashSet<AbcProdLineups>();
             AbcProdLineupsSelectionFbT = new HashSet<AbcProdLineups>();
             AbcProdLineupsSelectionT = new HashSet<AbcProdLineups>();
@@ -137,6 +146,14 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlenderComps> AbcBlenderCompsSwingT { get; set; }
         public virtual ICollection<AbcBlenderComps> AbcBlenderCompsTotCompVolT { get; set; }
         public virtual ICollection<AbcBlenderComps> AbcBlenderCompsWildFlagT { get; set; }
+        public virtual ICollection<AbcBlenderDest> AbcBlenderDestDestSelectNameT { get; set; }
+        public virtual ICollection<AbcBlenderDest> AbcBlenderDestPreselectionT { get; set; }
+        public virtual ICollection<AbcBlenderDest> AbcBlenderDestSelectionFbT { get; set; }
+        public virtual ICollection<AbcBlenderDest> AbcBlenderDestSelectionT { get; set; }
+        public virtual ICollection<AbcBlenderSources> AbcBlenderSourcesPreselectionT { get; set; }
+        public virtual ICollection<AbcBlenderSources> AbcBlenderSourcesSelectionFbT { get; set; }
+        public virtual ICollection<AbcBlenderSources> AbcBlenderSourcesSelectionT { get; set; }
+        public virtual ICollection<AbcBlenderSources> AbcBlenderSourcesStorageFlowT { get; set; }
         public virtual ICollection<AbcBlenders> AbcBlendersBlendDescT { get; set; }
         public virtual ICollection<AbcBlenders> AbcBlendersBlendIdT { get; set; }
         public virtual ICollection<AbcBlenders> AbcBlendersDcsBlnameFbT { get; set; }
@@ -175,6 +192,7 @@ namespace BlendMonitor.Entities
         public virtual ICollection<AbcBlenders> AbcBlendersTotalVolT { get; set; }
         public virtual ICollection<AbcCompLineupEqp> AbcCompLineupEqp { get; set; }
         public virtual ICollection<AbcCompLineups> AbcCompLineups { get; set; }
+        public virtual ICollection<AbcProdLineupEqp> AbcProdLineupEqp { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsPreselectionT { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsSelectionFbT { get; set; }
         public virtual ICollection<AbcProdLineups> AbcProdLineupsSelectionT { get; set; }

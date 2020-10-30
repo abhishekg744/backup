@@ -17,6 +17,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="ABBAdvancedBlendOptimizerCommonInterface">
+      <HintPath>Dll\ABBAdvancedBlendOptimizerCommonInterface.dll</HintPath>
+    </Reference>
+    <Reference Include="ABBAdvancedBlendOptimizerPreprocessor">
+      <HintPath>Dll\ABBAdvancedBlendOptimizerPreprocessor.dll</HintPath>
+    </Reference>
+    <Reference Include="ABBAdvancedBlendOptimizerSQL">
+      <HintPath>Dll\ABBAdvancedBlendOptimizerSQL.dll</HintPath>
+    </Reference>
+    <Reference Include="SharedGAMSInterface">
+      <HintPath>Dll\SharedGAMSInterface.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
