@@ -11,18 +11,18 @@ namespace BlendMonitor
 {
     public class Shared
     {
-        private static IBlendMonitorRepository _repository;
+        private IBlendMonitorRepository _repository;
         private readonly IConfiguration _configuration;
-        private static string programName;
-
+        private  string programName;
+        
         public Shared(IBlendMonitorRepository repository, IConfiguration configuration)
         {
             _repository = repository;
             _configuration = configuration;
             programName = _configuration.GetSection("ProgramName").Value.ToUpper();
         }
-
-        public static async Task<GoodBad> DCSCommStatus()
+        
+        public async Task<GoodBad> DCSCommStatus()
         {
             GoodBad DCSCommStatus = GoodBad.BAD;
             //' DCS communication watchdog tag toggled between
@@ -35,7 +35,7 @@ namespace BlendMonitor
                 DCSCommStatus = GoodBad.GOOD;
             return DCSCommStatus;
         }
-        public static async Task<GoodBad> ChkDcsComm(double lngBldID, double intBldrID, string strBldrName)
+        public  async Task<GoodBad> ChkDcsComm(double lngBldID, double intBldrID, string strBldrName)
         {
             string strRunState = "", strErrPrefix = "";
             //'strErrPrefix is the starting characters in an error string to be
@@ -78,7 +78,7 @@ namespace BlendMonitor
         }
 
         // *********** CheckNewIntvRecs ***********
-        public static async Task<int> CheckNewIntvRecs(double lngBldID, int intIntvNum, DebugLevels enumDebugLevel, DateTime dteCurTime)
+        public  async Task<int> CheckNewIntvRecs(double lngBldID, int intIntvNum, DebugLevels enumDebugLevel, DateTime dteCurTime)
         {
             bool blnIntvExists;
             string strSqlIntvProps;
@@ -137,7 +137,7 @@ namespace BlendMonitor
         }
 
         // return time conversion factor for (time unit -> day)
-        public static int TimeConvFactor(string strTimeUnit)
+        public  int TimeConvFactor(string strTimeUnit)
         {
             int rtrnData = -1;
             if (Strings.InStr(strTimeUnit, "H") == 1)
@@ -158,7 +158,7 @@ namespace BlendMonitor
 
         // log run time error messages into a text log
         //  Public Sub ErrorLog(ByVal strErr As String)                                           RW 28-Mar-2012 for PreemL PQ-19
-        public static void ErrorLog(string strErr, bool blnLogFileOnly)
+        public  void ErrorLog(string strErr, bool blnLogFileOnly)
         {
             ////  RW 28-Mar-2012 for PreemL PQ-19
             //// Warning!!! Optional parameters not supported

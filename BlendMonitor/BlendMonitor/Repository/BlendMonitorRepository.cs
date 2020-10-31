@@ -90,6 +90,7 @@ namespace BlendMonitor.Repository
 
             AbcProjDefaults Data = await _blendMonitorContext.AbcProjDefaults
                                         .FirstOrDefaultAsync<AbcProjDefaults>();
+            gProjDfs = new ProjDfData();
             gProjDfs.dblCmdTimeout = Data.StartTimeout == null ? 0 : Convert.ToDouble(Data.StartTimeout);
             gProjDfs.strAllowStartStop = Data.AllowStartAndStopFlag == null ? "NO" : Data.AllowStartAndStopFlag;
             gProjDfs.strAllowRateVolUpds = Data.AllowRateAndVolUpdsFlag == null ? "NO" : Data.AllowRateAndVolUpdsFlag;
@@ -294,6 +295,7 @@ namespace BlendMonitor.Repository
                 SqlParameter tag_name = new SqlParameter();
                 tag_name.ParameterName = "@TAG_NAME";
                 tag_name.Value = vntDummy;
+                tag_name.Size = 100;
                 tag_name.Direction = ParameterDirection.Output;
 
                 SqlParameter tag_val = new SqlParameter();
@@ -309,21 +311,25 @@ namespace BlendMonitor.Repository
                 SqlParameter val_Quality = new SqlParameter();
                 val_Quality.ParameterName = "@VAL_QUALITY";
                 val_Quality.Value = vntTagValQlt;
+                val_Quality.Size = 100;
                 val_Quality.Direction = ParameterDirection.Output;
 
                 SqlParameter read_Enabled = new SqlParameter();
                 read_Enabled.ParameterName = "@READ_ENABLED";
                 read_Enabled.Value = readEnabled;
+                read_Enabled.Size = 100;
                 read_Enabled.Direction = ParameterDirection.Output;
 
                 SqlParameter scan_enabled = new SqlParameter();
                 scan_enabled.ParameterName = "@SCAN_ENABLED";
                 scan_enabled.Value = scanEnabled;
+                scan_enabled.Size = 100;
                 scan_enabled.Direction = ParameterDirection.Output;
 
                 SqlParameter scan_grp_name = new SqlParameter();
                 scan_grp_name.ParameterName = "@SCAN_GRP_NAME";
                 scan_grp_name.Value = vntScanRateName;
+                scan_grp_name.Size = 100;
                 scan_grp_name.Direction = ParameterDirection.Output;
 
                 // Processing.  
@@ -455,8 +461,7 @@ namespace BlendMonitor.Repository
             AbcBlendIntervals Data = await _blendMonitorContext.AbcBlendIntervals
                                         .Where<AbcBlendIntervals>(row => row.BlendId == blendId && row.Sequence == sequence)
                                         .FirstOrDefaultAsync<AbcBlendIntervals>();
-            return Data.Starttime = (Data.Starttime == null) ? DateTime.ParseExact("1/1/1900", "MM/dd/yy", CultureInfo.InvariantCulture) :
-                                  DateTime.ParseExact(Data.Starttime.ToString(), "MM/dd/yy", CultureInfo.InvariantCulture);
+            return (Data == null || Data.Starttime == null) ? DateTime.Parse("1/1/1900"): DateTime.Parse(Data.Starttime.ToString());
 
         }
         public async Task<string> GetRbcStName(string val)
@@ -480,7 +485,7 @@ namespace BlendMonitor.Repository
         {
             try
             {
-                DateTime? value = null;
+                DateTime? value = new DateTime();
                 // declaring output param
                 SqlParameter p_out = new SqlParameter();
                 p_out.ParameterName = "@CUR_TIME";

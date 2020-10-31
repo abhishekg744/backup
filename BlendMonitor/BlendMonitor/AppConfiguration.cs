@@ -35,7 +35,7 @@ namespace BlendMonitor
                 .AddScoped<IHostedService, TimedHostedService>();
 
                 services.AddAutoMapper(typeof(Program));
-               
+                services.AddScoped<Shared>();
                 services.AddScoped<IBlendMonitorRepository, BlendMonitorRepository>();
                 services.AddScoped<IBlendMonitorService, BlendMonitorService>();
 

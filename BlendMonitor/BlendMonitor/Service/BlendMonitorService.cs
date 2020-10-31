@@ -81,14 +81,15 @@ namespace BlendMonitor.Service
         string gstrLIMSSeparateProps;
         int gintEtohEtohPropId;
         int gintEtohPropId;
-        CurBlendData curblend;
+        CurBlendData curblend = new CurBlendData();
         string[] gArPrevRBCState;
-        DateTime gDteCurTime;        
-
-        public BlendMonitorService(IBlendMonitorRepository repository, IConfiguration configuration)
+        DateTime gDteCurTime;
+        Shared _shared;
+        public BlendMonitorService(IBlendMonitorRepository repository, IConfiguration configuration, Shared shared)
         {
             _repository = repository;
             _configuration = configuration;
+            _shared = shared;
             programName = _configuration.GetSection("ProgramName").Value.ToUpper();
             commonGAMSOptimizer = new CommonGAMSOptimizer();
             connectionString = _configuration.GetConnectionString("ABC_BlendMonitorDB");
@@ -203,13 +204,13 @@ namespace BlendMonitor.Service
             int intWDLimit, intUpperLimit, intDCSCommWDRate;
             string vntDummy = "", vntTagValQlt = "", vntScanRateName = "";
             double vntTagVal = 0;
-            DateTime? vntTagValTime = null;
+            DateTime? vntTagValTime = new DateTime();
 
 
             if (vntBldrsData[intBldrIdx].RbcWdogTid == null)
             {
                 //'check DCS->ABC communication
-                if (await Shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.BAD)
+                if (await _shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.BAD)
                 {
                     // 'Set the blend state to COMM ERROR
                     curblend.strState = "COMM ERR";
@@ -1168,7 +1169,7 @@ namespace BlendMonitor.Service
 
         // *********** MonitorBlend ***********
 
-        private async void ChkIntervals(int intBldrIdx, CurBlendData curblend, DebugLevels enumDebugLevel,bool blnCloseIntv = false)
+        private async Task<int> ChkIntervals(int intBldrIdx, CurBlendData curblend, DebugLevels enumDebugLevel,bool blnCloseIntv = false)
         {
             double vntIntvNum;
             DateTime? vntStartTime;
@@ -1186,8 +1187,8 @@ namespace BlendMonitor.Service
             if(BlendIntvsList.Count() < 1)
             {
                 //check for and create if needed intv 0 and intv 1
-                await Shared.CheckNewIntvRecs(curblend.lngID, 0, enumDebugLevel, gDteCurTime);
-                await Shared.CheckNewIntvRecs(curblend.lngID, 1, enumDebugLevel, gDteCurTime);
+                await _shared.CheckNewIntvRecs(curblend.lngID, 0, enumDebugLevel, gDteCurTime);
+                await _shared.CheckNewIntvRecs(curblend.lngID, 1, enumDebugLevel, gDteCurTime);
                 BlendIntvsList = await _repository.GetBlendIntvs(curblend.lngID);
             }
 
@@ -1228,7 +1229,7 @@ namespace BlendMonitor.Service
                         // ABC_BLEND_INTERVAL_COMPS and ABC_BLEND_INTERVAL_PROPS
                         // ERIK *** use CheckNewIntvRecs in BLEND_MON
                         // CreateNewIntvRecs curBlend.lngID, curBlend.intCurIntv, enumDebugLevel
-                        await Shared.CheckNewIntvRecs(curblend.lngID, curblend.intCurIntv, enumDebugLevel, gDteCurTime);                       
+                        await _shared.CheckNewIntvRecs(curblend.lngID, curblend.intCurIntv, enumDebugLevel, gDteCurTime);                       
                     }
                     else
                     {
@@ -1246,8 +1247,8 @@ namespace BlendMonitor.Service
                 // if interval is =1
             }
             // if start time is null
-        }
-        // *********** ChkDcsRcp ***********
+            return 0;
+        }        
 
         private async Task<string> GetBldMatUsage(double lngBlendId, double? sngMatId)
         {
@@ -1264,7 +1265,7 @@ namespace BlendMonitor.Service
             return rtnData;           
         }
 
-        private async void ChkDcsRcp(int intBldrIdx, double lngBldID, string strBldName, DebugLevels enumDebugLevel)
+        private async Task<int> ChkDcsRcp(int intBldrIdx, double lngBldID, string strBldName, DebugLevels enumDebugLevel)
         {
             List<IntComps> vntIntComps;
             int intNIntComps;
@@ -1303,7 +1304,7 @@ namespace BlendMonitor.Service
 
                 if ((dblTotVol < cDblEp))
                 {
-                    return;
+                    return 0;
                 }
 
                 for (intI = 0; intI <= (intNIntComps - 1); intI++)
@@ -1327,10 +1328,11 @@ namespace BlendMonitor.Service
                         }
                     }
                 }
-            }                 
+            }
+            return 0;
         }
 
-        private async void UpdatePropTable(int intBldrIdx, int intPrdgrpID, double lngBldID, string strBldName, DebugLevels enumDebugLevel)
+        private async Task<int> UpdatePropTable(int intBldrIdx, int intPrdgrpID, double lngBldID, string strBldName, DebugLevels enumDebugLevel)
         {
             List<CompTankProps> vntSrcTkPrps;
             int intNCompProps;
@@ -1391,6 +1393,7 @@ namespace BlendMonitor.Service
                     gArSrcTkPrpValTime[intBldrIdx].blnArraySet = true;
                 }                
             }
+            return 0;
         }
         private async Task<double> ChkStnVol(int intBldrIdx, double intPrdgrpID, double? dblCurRcp, double? intStnId, DebugLevels enumDebugLevel)
         {
@@ -1407,7 +1410,7 @@ namespace BlendMonitor.Service
             // Get flow denominator for the product group
             strFlowDenom = await _repository.GetFlowDenom(Convert.ToInt32(intPrdgrpID));
 
-            intTimeConv = Shared.TimeConvFactor(strFlowDenom);
+            intTimeConv = _shared.TimeConvFactor(strFlowDenom);
 
             // Find database update time stored for the specified blend station
             dteLastValTime = cdteNull;
@@ -1444,7 +1447,7 @@ namespace BlendMonitor.Service
             // TODO: On Error GoTo Warning!!!: The statement is not translatable 
             // get flow denominator for the product group
             strFlowDenom = await _repository.GetFlowDenom(intPrdgrpID);
-            intTimeConv = Shared.TimeConvFactor(strFlowDenom);
+            intTimeConv = _shared.TimeConvFactor(strFlowDenom);
             
             if ((dteLastValTime == cdteNull))
             {
@@ -1826,7 +1829,7 @@ namespace BlendMonitor.Service
             // TODO: Exit Function: Warning!!! Need to return the value
             return rtrnData;
         }
-        private async void CopyLineprop()
+        private async Task<int> CopyLineprop()
         {
             object fs;
             string strLinePropPath;
@@ -1861,7 +1864,7 @@ namespace BlendMonitor.Service
             //strLinePropPath;
             //strDebugPath;
             //true;
-            return;
+            return 0;
         
         }      
 
@@ -1923,7 +1926,7 @@ namespace BlendMonitor.Service
                     // ReDim Preserve gblnFirstBiasCalc(Information.UBound(vntBldrsData, 2), 0 To(intNprops - 1))
 
                     //--------------debug--------------------//
-                   // Array.Resize(ref gblnFirstBiasCalc[Information.UBound(vntBldrsData, 2)], intNprops - 1);
+                    HelperMethods.ResizeArray<bool>(gblnFirstBiasCalc, vntBldrsData.Count(), intNprops);
                 }
             }
 
@@ -2545,7 +2548,7 @@ namespace BlendMonitor.Service
                                         if ((blnCopyLineprop == true))
                                         {
                                             // Copy Lineprop to the debug folder
-                                            CopyLineprop();
+                                            await CopyLineprop();
                                             blnCopyLineprop = false;
                                         }
 
@@ -4020,7 +4023,7 @@ namespace BlendMonitor.Service
                                     }
 
                                     //  Write message
-                                    Shared.ErrorLog("TOTALIZER VOLUME SCAN TIMES ARE NOT SYNCHRONIZED IN SCAN GROUP " + strScanGrpName + ", " + "BL-"
+                                    _shared.ErrorLog("TOTALIZER VOLUME SCAN TIMES ARE NOT SYNCHRONIZED IN SCAN GROUP " + strScanGrpName + ", " + "BL-"
                                                 + curblend.lngID + ", " + strMinMaxTimeTag, true);
                                     gintSkipCycleBmon[intBldrIdx] = 1;
 
@@ -4151,7 +4154,7 @@ namespace BlendMonitor.Service
                                     }
 
                                     //  Write message
-                                    Shared.ErrorLog("TOTALIZER VOLUME SCAN TIMES ARE NOT SYNCHRONIZED IN SCAN GROUP " + strScanGrpName + ", " + "BL-"
+                                    _shared.ErrorLog("TOTALIZER VOLUME SCAN TIMES ARE NOT SYNCHRONIZED IN SCAN GROUP " + strScanGrpName + ", " + "BL-"
                                                 + curblend.lngID + ", " + strMinMaxTimeTag, true);
                                     gintSkipCycleBmon[intBldrIdx] = 1;
 
@@ -5192,7 +5195,7 @@ namespace BlendMonitor.Service
                     // Note that all remaining volume was allocated in the previuos interval to be accounted in the last TQI
                     if ((gArBldFinishTime[intBldrIdx] != cdteNull) && (curblend.intCurIntv > 1))
                     {
-                        ChkIntervals(intBldrIdx,curblend,enumDebugLevel);
+                        await ChkIntervals(intBldrIdx,curblend,enumDebugLevel);
                     }
 
                     // JOJOJOJOJOJOJOJ
@@ -7396,7 +7399,7 @@ namespace BlendMonitor.Service
             }
 
             // check DCS->ABC communication
-            if (await Shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.BAD)
+            if (await _shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.BAD)
             {
                 return 0;
             }
@@ -7475,7 +7478,7 @@ namespace BlendMonitor.Service
             }
             else
             {
-                ChkIntervals(intBldrIdx, curblend, enumDebugLevel);
+                await ChkIntervals(intBldrIdx, curblend, enumDebugLevel);
             }
 
             //This is for copying the previous BIAS to the current interval BIAS if the interval is new
@@ -7499,7 +7502,7 @@ namespace BlendMonitor.Service
                 // if new interval, call CHECK_DCS_RECIPE
                 if (curblend.intCurIntv > gArPrevBldData[intBldrIdx].intCurIntv && curblend.intCurIntv > 1)
                 {
-                    ChkDcsRcp(intBldrIdx, curblend.lngID, curblend.strName, enumDebugLevel);
+                    await ChkDcsRcp(intBldrIdx, curblend.lngID, curblend.strName, enumDebugLevel);
                 }
             }
 
@@ -7507,7 +7510,7 @@ namespace BlendMonitor.Service
             // if ALLOW_COMP_UPDATES is YES then call UPDATE_PROP_TABLE function
             if ((gProjDfs.strAllowCompUpds == "YES"))
             {
-                UpdatePropTable(intBldrIdx, Convert.ToInt32(vntBldrsData[intBldrIdx].PrdgrpId), curblend.lngID, curblend.strName, enumDebugLevel);
+                await UpdatePropTable(intBldrIdx, Convert.ToInt32(vntBldrsData[intBldrIdx].PrdgrpId), curblend.lngID, curblend.strName, enumDebugLevel);
             }
 
             // call CALC_BLEND function
@@ -7963,7 +7966,7 @@ namespace BlendMonitor.Service
                             lngFlushTankId = GetDestTkFlagsDataFiltered[0].TankId;
                             blnFlushing = true;
                         }
-                        intNDestTks = GetDestTkFlagsDataFiltered.Count();
+                        intNDestTks = GetDestTkFlagsData.Count();
                     }
 
                     if(intNDestTks > 1)
@@ -8150,8 +8153,8 @@ namespace BlendMonitor.Service
                         {
                             gDteCurTime = await _repository.GetCurTime();
 
-                            await Shared.CheckNewIntvRecs(curblend.lngID, 0, enumDebugLevel, gDteCurTime);
-                            await Shared.CheckNewIntvRecs(curblend.lngID, 1, enumDebugLevel, gDteCurTime);
+                            await _shared.CheckNewIntvRecs(curblend.lngID, 0, enumDebugLevel, gDteCurTime);
+                            await _shared.CheckNewIntvRecs(curblend.lngID, 1, enumDebugLevel, gDteCurTime);
                             BlendIntvs = await _repository.GetBlendIntvs(curblend.lngID);
                         }
                         if (BlendIntvs[0].Starttime == null)
@@ -8187,7 +8190,7 @@ namespace BlendMonitor.Service
                             if (Math.Abs((Convert.ToInt32(tagTotVol.vntTagVal) - gdblBldVol)) > 1)
                             {
                                 // Check DCS->ABC communication
-                                if (await Shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.BAD)
+                                if (await _shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.BAD)
                                 {
                                     return 0;
                                 }
@@ -8546,7 +8549,7 @@ namespace BlendMonitor.Service
                         // call NULL_COMMAND_ACTION function
                         await NullCmdAction(intBldrIdx, vntBldrsData, curblend, enumDebugLevel, true);                        
                     }
-                    else if (await Shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.GOOD)
+                    else if (await _shared.ChkDcsComm(curblend.lngID, vntBldrsData[intBldrIdx].Id, gstrBldrName) == GoodBad.GOOD)
                     {
                         
                         if ((GetAbcBlenderParam(vntBldrsData[intBldrIdx], ((int)enumBldCmd + (int)BldrsDataFieldIdices.START_TID))  == null ))  //(enumBldCmd + START_TID) - check the obj param
@@ -12713,10 +12716,10 @@ namespace BlendMonitor.Service
             // create new records for interval #0 if not already exist
             // use CheckNewIntvRecs in case 0 exists
             //    CreateNewIntvRecs lngBldID, 0, enumDebugLevel
-            await Shared.CheckNewIntvRecs(lngBldID,0,enumDebugLevel,gDteCurTime);
+            await _shared.CheckNewIntvRecs(lngBldID,0,enumDebugLevel,gDteCurTime);
             // create new records for interval #1
             //    CreateNewIntvRecs lngBldID, 1, enumDebugLevel
-            await Shared.CheckNewIntvRecs(lngBldID, 1, enumDebugLevel, gDteCurTime);
+            await _shared.CheckNewIntvRecs(lngBldID, 1, enumDebugLevel, gDteCurTime);
             
             return 0;
         
@@ -12755,14 +12758,14 @@ namespace BlendMonitor.Service
                 if (intNBldrs > 0)
                 {
                     //LINEPROP at the middle of the interval has been suppressed.                       
-                    gintSkipCycleBmon = new int[intNBldrs - 1];
-                    gDteCompSwgCmdTime = new DateTime[intNBldrs - 1];
-                    gDteProdSwgCmdTime = new DateTime[intNBldrs - 1];
-                    gblnMsgLogged = new bool[intNBldrs - 1];
-                    gblnSampleMsgLogged = new bool[intNBldrs - 1];
-                    gblnProdSwgTimeIn = new bool[intNBldrs - 1];
-                    gblnCompSwgTimeIn = new bool[intNBldrs - 1];
-                    gblnBmonStarted = new bool[intNBldrs - 1];
+                    gintSkipCycleBmon = new int[intNBldrs];
+                    gDteCompSwgCmdTime = new DateTime[intNBldrs];
+                    gDteProdSwgCmdTime = new DateTime[intNBldrs];
+                    gblnMsgLogged = new bool[intNBldrs];
+                    gblnSampleMsgLogged = new bool[intNBldrs];
+                    gblnProdSwgTimeIn = new bool[intNBldrs];
+                    gblnCompSwgTimeIn = new bool[intNBldrs];
+                    gblnBmonStarted = new bool[intNBldrs];
                     // '       'JO - Aug, 03: This intVar allows recalc of LINEPROP after CalcBias all the way to first interval
                     //'       gint1stSampleBias = new int[intNBldrs - 1];
                     //       'First member is for blend id, second is for target vol/target vol/Transfer Vol
@@ -12772,7 +12775,7 @@ namespace BlendMonitor.Service
                     gArPrevTransferVol = new double[intNBldrs, intNBldrs + 1];
 
                     // initialize variables per blender
-                    for (intI = 0; (intI <= (intNBldrs - 1)); intI++)
+                    for (intI = 0; (intI < intNBldrs); intI++)
                     {
                         // JO - Sep, 03: LINEPROP at the middle of the interval has been suppressed.
                         // Variable to calc the component volumes in the middle of an interval
@@ -12794,28 +12797,35 @@ namespace BlendMonitor.Service
 
                 if (!blnArraysSet)
                 {
-                    gArPrevBldData = new PrevBlendData[intNBldrs - 1];
-                    gArBldFinishTime = new DateTime[intNBldrs - 1];
-                    gArAnzOfstSvd = new bool[intNBldrs - 1];
-                    gArCompValTime = new ValTime[intNBldrs - 1];
+                    gArPrevBldData = new PrevBlendData[intNBldrs];
+                    gArBldFinishTime = new DateTime[intNBldrs];
+                    gArAnzOfstSvd = new bool[intNBldrs];
+                    gArCompValTime = new ValTime[intNBldrs];
                     // 'BDS 11-May-2012 PQ-D0074 Array to record times when station current volumes are updated
-                    gArStnValTime = new ValTime[intNBldrs - 1];
+                    gArStnValTime = new ValTime[intNBldrs];
                     // 'BDS 11-May-2012 PQ-D0074
-                    gArSrcTkPrpValTime = new ValTime[intNBldrs - 1];
+                    gArSrcTkPrpValTime = new ValTime[intNBldrs];
                     // '     gArBldEqpTags[intNBldrs - 1]
-                    gArRbcWdog = new RbcWatchDog[intNBldrs - 1];
-                    gArAnzDelay = new DateTime[intNBldrs - 1];//the anz_start_delay of the blenders
-                    gblnNOProcActBlds = new bool[intNBldrs - 1];//the anz_start_delay of the blenders
-                    gblnOptimizing = new bool[intNBldrs - 1];//Optimizing flag
-                    gintNameCount = new int[intNBldrs - 1]; //counter of retries when ABC<>RBC name
-                    gblnSetOptNowFlag = new bool[intNBldrs - 1]; //This flag sets the TQI_NOW_FLAG='YES' when the BMON starts (1st Time]
-                    gblnPrevStatePaused = new bool[intNBldrs - 1];//create new intervals only two cycles of Bmon after paused state
-                                                                  // '      gint1stSampleBias[intNBldrs - 1] 'JO - Aug, 03: This intVar allows recalc of LINEPROP after CalcBias all the way to first interval
+                    gArRbcWdog = new RbcWatchDog[intNBldrs];
+                    gArAnzDelay = new DateTime[intNBldrs];//the anz_start_delay of the blenders
+                    gblnNOProcActBlds = new bool[intNBldrs];//the anz_start_delay of the blenders
+                    gblnOptimizing = new bool[intNBldrs];//Optimizing flag
+                    gintNameCount = new int[intNBldrs]; //counter of retries when ABC<>RBC name
+                    gblnSetOptNowFlag = new bool[intNBldrs]; //This flag sets the TQI_NOW_FLAG='YES' when the BMON starts (1st Time]
+                    gblnPrevStatePaused = new bool[intNBldrs];//create new intervals only two cycles of Bmon after paused state
+                                                              // '      gint1stSampleBias[intNBldrs - 1] 'JO - Aug, 03: This intVar allows recalc of LINEPROP after CalcBias all the way to first interval
 
-
-                    // gblnFirstBiasCalc = new bool[intNBldrs - 1, 0 To 1]; //'initialize
-                    gblnBiasRedimDone = new bool[intNBldrs - 1];
-                    gArPrevRBCState = new string[intNBldrs - 1];
+                    for (int i = 0; i < intNBldrs; i++)
+                    {
+                        gArPrevBldData[i] = new PrevBlendData();
+                        gArCompValTime[i] = new ValTime();
+                        gArStnValTime[i] = new ValTime();
+                        gArSrcTkPrpValTime[i] = new ValTime();
+                        gArRbcWdog[i] = new RbcWatchDog();                        
+                    }
+                    gblnFirstBiasCalc = new bool[intNBldrs, 1]; //'initialize
+                    gblnBiasRedimDone = new bool[intNBldrs];
+                    gArPrevRBCState = new string[intNBldrs];
 
                     blnArraysSet = true;
                 }
@@ -12839,7 +12849,7 @@ namespace BlendMonitor.Service
                 gsngMinEtoh = gProjDfs.sngMinEtoh;
                 gstrLIMSSeparateProps = gProjDfs.strLIMSSeparateProps;
                 Console.WriteLine("Iterating through all blenders");
-                for (int i = 0; i < intNBldrs - 1; i++)
+                for (intI = 0; intI < intNBldrs; intI++)
                 {
                     //Flag to skip the Proccess calc of active blends when the
                     //Tmon is finishing the TQI and the DCS state is Complete
@@ -13073,6 +13083,7 @@ namespace BlendMonitor.Service
                         //'RW 14-Oct-16 Gasoline Ethanol blending
                         //'Flag could be null for a ready blend
                         curblend.vntEtohBldgReqd = ReadyBlds[0].EthanolBldgReqdFlag; // NULL_
+                        curblend.strState = (curblend.strState == null) ? "" : curblend.strState;
 
 
                     }
@@ -13133,6 +13144,10 @@ namespace BlendMonitor.Service
                         //For intJ = 0 To(UBound(gblnFirstBiasCalc, 2) - 1)
                         //   gblnFirstBiasCalc(intI, intJ) = False
                         //Next intJ
+                        for ( intJ = 0; intJ < gblnFirstBiasCalc.Length; intJ++)
+                        {
+                            gblnFirstBiasCalc[intI, intJ] = false;
+                        }
 
                         // ------------------
 
@@ -13244,7 +13259,7 @@ namespace BlendMonitor.Service
 
                     if (enumDebugLevel >= DebugLevels.Medium) {                        
                         var res = "";
-                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG39), programName, cstrDebug, curblend.strName, curblend.strName, curblend.vntPendSt.ToString(), curblend.strState, "", "", res);
+                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG39), programName, cstrDebug, curblend.strName, curblend.strName, (curblend.vntPendSt == null)?"": curblend.vntPendSt, curblend.strState, "", "", res);
                     }
                     if (curblend.vntPendSt != null) {
                         //'call CHECK_COMMAND_VALIDITY function, if INVALID, set pending state to null

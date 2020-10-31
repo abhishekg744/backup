@@ -34,7 +34,7 @@ namespace BlendMonitor.Service
             double? Data =  _blendMonitorRepo.GetCycleTime(programName);
             if (Data == null)
                 Data = 3;
-            int minutes = Convert.ToInt32(Data);
+            int minutes = 500;//Convert.ToInt32(Data);
             Console.WriteLine("cycle time for Blend monitor - " + minutes + " minutes");
             _timer = new Timer(DoWork, null, TimeSpan.Zero,
                 TimeSpan.FromSeconds((minutes * 60)));
@@ -42,7 +42,7 @@ namespace BlendMonitor.Service
             return Task.CompletedTask;
         }
 
-        private async void DoWork(object state)
+        private void DoWork(object state)
         {
             _blendMonitorService.ProcessBlenders();
         }

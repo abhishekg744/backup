@@ -15,7 +15,7 @@ namespace BlendMonitor.Model
         public double? vntMaxVol;
         public double? vntMinRate;
         public double? vntMaxRate;
-        public string strState;
+        public string strState = "";
         public double? dblCorrFac;
         public string strCtlMode;
         public double? sngCurVol;
