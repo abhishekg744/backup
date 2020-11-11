@@ -29,6 +29,7 @@ namespace BlendMonitor.Entities
         public virtual DbSet<AbcBlendProps> AbcBlendProps { get; set; }
         public virtual DbSet<AbcBlendSampleProps> AbcBlendSampleProps { get; set; }
         public virtual DbSet<AbcBlendSamples> AbcBlendSamples { get; set; }
+        public virtual DbSet<AbcBlendSourceSeq> AbcBlendSourceSeq { get; set; }
         public virtual DbSet<AbcBlendSources> AbcBlendSources { get; set; }
         public virtual DbSet<AbcBlendStations> AbcBlendStations { get; set; }
         public virtual DbSet<AbcBlendSwings> AbcBlendSwings { get; set; }
@@ -79,7 +80,7 @@ namespace BlendMonitor.Entities
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
-                optionsBuilder.UseSqlServer("Server=DESKTOP-1IC6D7F\\SQLEXPRESS;Database=ABCTest3;Trusted_Connection=True;");
+                optionsBuilder.UseSqlServer("Server=LPZ-WFH-1\\SQLEXPRESS;Database=TankMonitor;Trusted_Connection=True;");
             }
         }
 
@@ -1244,6 +1245,60 @@ namespace BlendMonitor.Entities
                     .HasForeignKey(d => d.BlendId)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_BLEND_ID_SAMPLES");
+            });
+
+            modelBuilder.Entity<AbcBlendSourceSeq>(entity =>
+            {
+                entity.HasKey(e => new { e.BlendId, e.MatId, e.TankId, e.SwingSequence })
+                    .HasName("PK_BLEND_SOURCE_SEQ");
+
+                entity.ToTable("ABC_BLEND_SOURCE_SEQ");
+
+                entity.Property(e => e.BlendId).HasColumnName("BLEND_ID");
+
+                entity.Property(e => e.MatId).HasColumnName("MAT_ID");
+
+                entity.Property(e => e.TankId).HasColumnName("TANK_ID");
+
+                entity.Property(e => e.SwingSequence).HasColumnName("SWING_SEQUENCE");
+
+                entity.Property(e => e.CreatedBy)
+                    .HasColumnName("CREATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnName("CREATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.LastUpdatedBy)
+                    .HasColumnName("LAST_UPDATED_BY")
+                    .HasMaxLength(32)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.LastUpdatedDate)
+                    .HasColumnName("LAST_UPDATED_DATE")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.Rowid)
+                    .HasColumnName("ROWID")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.TimeIn)
+                    .HasColumnName("TIME_IN")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.TimeOut)
+                    .HasColumnName("TIME_OUT")
+                    .HasColumnType("datetime2(0)");
+
+                entity.Property(e => e.VolUsed).HasColumnName("VOL_USED");
+
+                entity.HasOne(d => d.AbcBlendSources)
+                    .WithMany(p => p.AbcBlendSourceSeq)
+                    .HasForeignKey(d => new { d.BlendId, d.MatId, d.TankId })
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_BL_MAT_TNK_BLEND_SOURCE_SEQ");
             });
 
             modelBuilder.Entity<AbcBlendSources>(entity =>

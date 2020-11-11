@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using static BlendMonitor.Constans;
 using SharedGAMSInterface;
-
+using ABBAdvancedBlendOptimizerSQL.PostProcess.Repository;
 
 namespace BlendMonitor.Service
 {
@@ -39,7 +39,7 @@ namespace BlendMonitor.Service
         RbcWatchDog[] gArRbcWdog;
         ProjDfData gProjDfs;
         string gstrBldrName;
-        DcsTag gTagTotFlow;
+        DcsTag gTagTotFlow = new DcsTag();
         double gTID1LocVar;
         double gTID2LocVar;
         string gstrRundnFlag;
@@ -566,7 +566,7 @@ namespace BlendMonitor.Service
                         }
                         else
                         {
-                            //'JAIME: Reset the blend state to READY state when the Start_OK="OFF"
+                            //' Reset the blend state to READY state when the Start_OK="OFF"
                             //'and the RBC Mode is not Remote
                             if (gArPrevBldData[intBldrIdx].strState.Trim() == "LOADED" && curblend.dteActualStart == cdteNull)
                             {
@@ -1206,7 +1206,7 @@ namespace BlendMonitor.Service
                 // Commented to move to the last interval instead of looping through all the records until the last one
                 //       Do Until IsNull(vntStopTime.Value)                
                 //       Loop
-                // JO - Jan 27, 04: override the start_time for interval 1.  This way interval
+                //  override the start_time for interval 1.  This way interval
                 // will not be anymore a dummy interval.  It will have its own volumes
                 if (vntIntvNum == 1 && gArPrevBldData[intBldrIdx].strState.Trim() == "LOADED" && curblend.strState.Trim() == "ACTIVE")
                 {
@@ -1354,7 +1354,7 @@ namespace BlendMonitor.Service
             {
                 if (!gArSrcTkPrpValTime[intBldrIdx].blnArraySet)
                 {
-                    gArSrcTkPrpValTime[intBldrIdx].arValueTime = new DateTime[intNCompProps - 1];
+                    gArSrcTkPrpValTime[intBldrIdx].arValueTime = new DateTime[intNCompProps];
                 }
 
                 // copy comp prop values to ABC_BLEND_COMP_PROPS if new data available
@@ -1490,7 +1490,7 @@ namespace BlendMonitor.Service
 
             return;
         }
-        // JO - April 04: Get the prev stations vols from blend stations
+        // Get the prev stations vols from blend stations
         private async Task<double> GetOrgStationVols(double blendId, double matId, double? curLineupId, double dblTotalStationVol)
         {            
             double? dblAddStationVol = 0;           
@@ -1535,69 +1535,7 @@ namespace BlendMonitor.Service
                 rtnData = 1;
             }
             return rtnData;
-        }
-        // *********** ModelLocal ***********
-
-
-        // call GAMS to do recipe or line property calculations
-        // For OPTIMIZE mode, vntData is run ID for the optimizer run
-        // For LINEPROP mode, vntData is a 1-D array of interval comp vols
-        // JO - intIntNum: holds the StartInterval for composite samples.   A new parameter has been added to
-        // intStopInterval (optional): holds the StopInterval for composite/spot samples, which is used to get the range of sample intervals
-        //public async void ModelLocal(GAMSCalcTypes enumCalcType, double lngBlendId, int intIntvNum, double[] vntData, DebugLevels enumDebugLevel, int? intStopInterval,RetStatus gintOptResult)
-        //{           
-        //    // TODO: On Error GoTo Warning!!!: The statement is not translatable 
-            
-        //    string gstrOptEngine = await _repository.GetOptEngine();
-        //    string gstrSBPath = "";
-        //    string gstrModelDir = "";
-        //    string gstrOutputDir = "";
-        //    string gstrInputDir = "";
-        //    string gstrErrorDir = "";
-
-        //    List<string> Data = await _repository.GetSBPath();
-        //    if (Data.Count() > 0)
-        //    {
-        //        gstrSBPath = (Data[0] ==null)?"C:\\SB35": Data[0];
-        //        gstrModelDir = (gstrSBPath + cstrModelDir);
-        //        gstrInputDir = (gstrSBPath + cstrInputDir);
-        //        gstrOutputDir = (gstrSBPath + cstrOutputDir);
-        //        gstrErrorDir = (gstrSBPath + cstrErrorDir);
-        //    }
-        //    else
-        //    {
-        //        gstrSBPath = "C:\\SB35";
-        //        gstrModelDir = ("C:\\SB35" + cstrModelDir);
-        //        gstrInputDir = ("C:\\SB35" + cstrInputDir);
-        //        gstrOutputDir = ("C:\\SB35" + cstrOutputDir);
-        //        gstrErrorDir = ("C:\\SB35" + cstrErrorDir);
-        //    }            
-
-        //    //if (enumCalcType == GAMSCalcTypes.LINEPROP && ! vntData.IsArray)
-        //    //{
-        //    //    Err.Description = ("Argument vntData for ModelLocal() must be " + "array for line prop calc");
-        //    //    Err.Raise;
-        //    //    (vbObjectError + 1000);
-        //    //}
-
-        //    //if ((enumCalcType != GAMSCalcTypes.OPTIMIZE) && (enumCalcType != GAMSCalcTypes.LINEPROP))
-        //    //{
-        //    //    Err.Description = "Unknown GAMS calc type. Must be OPTIMIZE(= 0) or LINEPROP(= 2)";
-        //    //    Err.Raise;
-        //    //    (vbObjectError + 1000);
-        //    //}
-
-        //    // Partha - create the error dir if it doesn't exist - 11/17/2000
-        //    CreateDir(gstrErrorDir)
-        //    GAMSIntface enumCalcType, lngBlendId,intIntvNum,vntData,enumDebugLevel,intStopInterval;
-        //    //// JO - Jan. 19, 04: opt result is required then pass the FAILURE/SUCCESS flag
-        //    //if (gintOptResult == RetStatus.FAILURE)
-        //    //{
-        //    //    gintOptResult = gArOptSoluStats(enumCalcType);
-        //    //}
-
-        //    return;        
-        //}
+        }        
         private async Task<double> ChkIntBiasCalcCurr(string strBiasCalcCurrent, int intStartInterval, double lngBlendId, double lngPropID, int intStopInterval = 0)
         {                       
             string strBiasType;
@@ -1727,8 +1665,8 @@ namespace BlendMonitor.Service
                 {
                     // if abc_blends.bias_overrite_flag="YES", then fallback, if there is at least one composite/spot sample
                     // Do not care about BIASCALC_CURRENT for all intervals
-                    // JO/KA/NL - Jan. 20, 04
-                    //             'JO/KA/NL - Jan. 20, 04: bias override should is used to process several samples at once, but the biascalc_current
+                    
+                    //             ' bias override should is used to process several samples at once, but the biascalc_current
                     //             'should match the sample type
                     //             If curblend.strBiasOverrideFlag = "NO" Then
                     // Get interval, where an anz value should exist
@@ -1894,7 +1832,7 @@ namespace BlendMonitor.Service
             string strPropUnit= "";
             bool blnCopyLineprop;
             float sngCorrellBias;
-            // JO - Aug, 03: Sample composite/spot declaration
+            // Sample composite/spot declaration
             int intPropIndex;
             int intMatchingIntv;
             int intNprops;
@@ -1926,7 +1864,7 @@ namespace BlendMonitor.Service
                     // ReDim Preserve gblnFirstBiasCalc(Information.UBound(vntBldrsData, 2), 0 To(intNprops - 1))
 
                     //--------------debug--------------------//
-                    HelperMethods.ResizeArray<bool>(gblnFirstBiasCalc, vntBldrsData.Count(), intNprops);
+                    gblnFirstBiasCalc = HelperMethods.ResizeArray<bool>(gblnFirstBiasCalc, vntBldrsData.Count(), intNprops);
                 }
             }
 
@@ -2042,7 +1980,7 @@ namespace BlendMonitor.Service
                                         intMatchingIntv = -1;
                                         // find the interval range where the bias will be updated (interval range between stopinterval and
                                         // current closed interval (currIntvl -1))
-                                        // JO/KA/NL - Jan. 20, 04: Comment out BiasOverrideFlag
+                                        //  Comment out BiasOverrideFlag
                                         //                                 If curblend.strBiasOverrideFlag = "NO" Then
                                         // check if all intervals have the same BiasCalc_current. strCurBiasType="", means that at this point
                                         // function will return any intervals where biascalc_type=COMPOSITE or SPOT
@@ -2078,7 +2016,7 @@ namespace BlendMonitor.Service
                                             sngBias = PrevIntBiasData[0];
                                         }
 
-                                        // JO - Aug, 03: if this is the first time bias is being calc for this prop, then
+                                        //  if this is the first time bias is being calc for this prop, then
                                         // skip filtering
                                         blnFirstBias = false;
                                         if ((gblnFirstBiasCalc[intBldrIdx, intPropIndex] == true))
@@ -2154,7 +2092,7 @@ namespace BlendMonitor.Service
                                         // save new interval prop bias to this and all sub sebsequent intervals
                                         dblIntBias = Math.Round(dblIntBias, 10);
                                         // if bias_override flag is set to YES, then update bias all the way to first interval
-                                        // JO/KA/NL - Jan. 20, 04: Comment out BiasOverrideFlag
+                                        // Comment out BiasOverrideFlag
                                         //                                 If curblend.strBiasOverrideFlag = "NO" Then
                                         // find out how many intervals have the same BiasCalc_current (SPOT/COMPOSITE) between stopInterval and curblend.intCurIntv - 1
                                         // strCurBiasType="", means that at this point function will return any intervals where biascalc_type=COMPOSITE or SPOT
@@ -2180,7 +2118,7 @@ namespace BlendMonitor.Service
                                                 gintStartStopIntv[(int)StartStop.STP] = intMatchingIntv;
                                             }
 
-                                            // JO - July , 2005: Make sure that start/stop intervals are valid
+                                            //  Make sure that start/stop intervals are valid
                                             if ((gintStartStopIntv[(int)StartStop.STRT] > gintStartStopIntv[(int)StartStop.STP]))
                                             {
                                                 gintStartStopIntv[(int)StartStop.STP] = gintStartStopIntv[(int)StartStop.STRT];
@@ -2196,7 +2134,7 @@ namespace BlendMonitor.Service
                                         if ((blnFirstBias == true))
                                         {
                                             intMatchingIntv = -1;
-                                            // JO/KA/NL - Jan. 20, 04: Comment out BiasOverrideFlag
+                                            // Comment out BiasOverrideFlag
                                             //                                     'if bias_override flag is set to YES, then update bias all the way to first interval
                                             //                                     If curblend.strBiasOverrideFlag = "NO" Then
                                             // find out how many intervals have the same BiasCalc_current (SPOT/COMPOSITE) from the start interval until
@@ -2330,7 +2268,7 @@ namespace BlendMonitor.Service
                     if (SampleIntvPropsList.Count() > 0)
                     {
                         strBiasCalcCurrent = (SampleIntvPropsList[0].BiascalcCurrent == null) ? "ANALYZER" : SampleIntvPropsList[0].BiascalcCurrent;
-                        //'JO - Aug, 03: Fallback handling should be located here, because this checking should be done
+                        //' Fallback handling should be located here, because this checking should be done
                         //'only for ANALYZER type of abc_blend_interval_props.calc_current_type
                         //'The interval should be (Current_interval - 1), because we will be doing Bias calc only after a new interval is created
                         if ((strBiasCalcCurrent == "ANALYZER"))
@@ -2416,14 +2354,14 @@ namespace BlendMonitor.Service
                     }// ' not interval prop data
 
 
-                    // JO - Oct. 03: the BiasCalc_current field will be used to perform bias calc
+                    //  the BiasCalc_current field will be used to perform bias calc
                     // The default value is "ANALYZER", so if the user wants to skip bias calc
                     // for analyzers, then BiasCalc_type should be set to "NOCALC"
                     if ((strBiasCalcCurrent == "ANALYZER"))
                     {
-                        // JAIME:  Create a loop of props and find the latest good value fo each
+                        //   Create a loop of props and find the latest good value fo each
                         // prop in order to calculate the BIAS based in that record.
-                        // JO - Aug, 03: this cmd was modified to add a "where" clause where the query will
+                        //  this cmd was modified to add a "where" clause where the query will
                         // return only NOT NULL records for anzr_res and feedback pred values
 
                         // This cmd needs to be executed only once, because it queries all props for all intvs
@@ -2495,9 +2433,9 @@ namespace BlendMonitor.Service
                                 dblIntBiasNew = Math.Round(dblIntBiasNew, 10);
                                 await _repository.SetModelErr(dblIntBiasNew, vntBldrsData[intBldrIdx].Id, vntPropID, curblend.lngID, vntIntvNum, vntPropID);
                                 // **********
-                                // Oct 09, 2002: Clamp the pure Bias and save it into abc_blend_intervals.unfilt_bias
+                                // Clamp the pure Bias and save it into abc_blend_intervals.unfilt_bias
                                 dblUnfilBias = dblIntBiasNew;
-                                // JO - Aug, 03: After disc. with Krisk: if bias clamp is null then set = unfilt_bias (no limits)
+                                // After disc. with Krisk: if bias clamp is null then set = unfilt_bias (no limits)
                                 if (dblBiasClamp == -1)
                                 {
                                     dblBiasClamp = dblUnfilBias;
@@ -2616,14 +2554,14 @@ namespace BlendMonitor.Service
                                 // anzr values should be excluded once the current values are used in bias calc
                                 // This query has been modified to update the Calc_Prop_flag to NO for a prop in the previous intvs
                                 await _repository.SetIntCalcPropertyFlag(curblend.lngID, vntPropID, vntIntvNum);
-                                // Jaime: To force the optimization the the first time when Bias is calculated or when
+                                //  To force the optimization the the first time when Bias is calculated or when
                                 //  the Bmon starts after it got killed or terminated
                                 if (gblnSetOptNowFlag[intBldrIdx] == false)
                                 {
                                     if (((curblend.intCurIntv > gArPrevBldData[intBldrIdx].intCurIntv) && (curblend.intCurIntv > 1))
                                                 && ((curblend.vntPendSt == null) && (vntBldrsData[intBldrIdx].OptimizeFlag == "YES")))
                                     {
-                                        // JO -Aug, 03: the Bmon now sets the TQI_NOW_FLAG instead of the PENDING_STATE='OPTIMIZING'
+                                        //  the Bmon now sets the TQI_NOW_FLAG instead of the PENDING_STATE='OPTIMIZING'
                                         await _repository.SetTqi(curblend.lngID);
 
                                         // Set the flag to false to avoid this routine for the others properties/rest of the blend
@@ -2722,7 +2660,7 @@ namespace BlendMonitor.Service
        
         }
 
-        // JO - Sep, 03: This sub calc and updates the Avg Anzr value to be compared with the composite value
+        //  This sub calc and updates the Avg Anzr value to be compared with the composite value
         //               in abc_blend_sample_props.anzr_value
         private async Task<int> CalcAvgAnzProp(int intStartInterval, int intStopInterval, double lngBlendId, string strSampleName, int intPrdgrpID)
         {
@@ -2830,9 +2768,9 @@ namespace BlendMonitor.Service
                 // Make a loop of three elements to calc Anzr val=1, FB pred=2, SP pred=3
                 for (intJ = 1; (intJ <= 3); intJ++)
                 {
-                    // JO - Nov. 21, 05: Initialize the density value
+                    //  Initialize the density value
                     dblTotalIntDensity = 0;
-                    // JOJOJOJOJO
+                    
                     dblTotalCompIntvVol = 0;
                     dblIntVarValue = 0;
                     dblCompIntvVol = 0;
@@ -3197,7 +3135,7 @@ namespace BlendMonitor.Service
             
             // TODO: On Error GoTo Warning!!!: The statement is not translatable 
             RetStatus rtrnData = RetStatus.FAILURE;
-            // JO - Oct, 03: If proj default allow sampling flag is NO, then skip sampling processing
+            //  If proj default allow sampling flag is NO, then skip sampling processing
             if (gProjDfs.strAllowSCSampling == "YES")
             {
                 // Composite sampling.  If there is data in ABC_BLENDS_SAMPLE_PROPS call GAMS to calculate the
@@ -3288,7 +3226,7 @@ namespace BlendMonitor.Service
                         // intervals between stoptime until the starttime of the composite/spot sample
                         // Create a loop of sample props to check the blend interval props.calctype_current
                         // If at least one sample prop satisfies that calctype_current ="SPOT" OR "COMPOSITE", then
-                        // proceed and do LINEPROP, but update bias only for props that have the same biascalc_type (composite or spot) (JO/KA)
+                        // proceed and do LINEPROP, but update bias only for props that have the same biascalc_type (composite or spot) 
                         // get the Blend Sample Props for the specified sample name
                         // BiasOverride Flag means that the user
                         // from the GUI (ABC Displays) will set the biascalc_current from ANZR to
@@ -3412,7 +3350,7 @@ namespace BlendMonitor.Service
                                     // This array(2) will return start and stop intervals from the bias calc within the CalcBlend Sub
                                     gintStartStopIntv[(int)StartStop.STRT] = -1;
                                     gintStartStopIntv[(int)StartStop.STP] = -1;
-                                    // JO - April 14, 2005: The matching interval should be used only to process the sample in the range, but the
+                                    //  The matching interval should be used only to process the sample in the range, but the
                                     // bias, fb pred properties should be obtained from the StartInterval
                                     intMatchIntv = Convert.ToInt32(strStartInterval);
                                     // Process the BIAS for SPOT Sample. Pass also the matching interval (intv where biascalc_current is SPOT)
@@ -3425,7 +3363,7 @@ namespace BlendMonitor.Service
                                         blnBiasOverrideFlag = true;
                                     }
 
-                                    // JO - sep, 03: This array(2) will return start and stop intervals from the bias calc within the CalcBlend Sub
+                                    //  This array(2) will return start and stop intervals from the bias calc within the CalcBlend Sub
                                     if (gintStartStopIntv[(int)StartStop.STRT] != -1)
                                     {
                                         strStartInterval = gintStartStopIntv[(int)StartStop.STRT].ToString();
@@ -3458,7 +3396,7 @@ namespace BlendMonitor.Service
                                         }
 
                                         intNPeriod = Convert.ToInt32(strStopInterval) - Convert.ToInt32(strStartInterval);
-                                        // JO - Jan. 19, 03: If the number of intervals to be included in the recalculation of FB Predicted Value
+                                        //  If the number of intervals to be included in the recalculation of FB Predicted Value
                                         // is greater than (12-20), then split the recalculation in multiples of 12-20 intervals.
                                         // Gams optimization problem becomes too big and the Solver reaches the maximun number of iterations or it takes
                                         // a long time (up to 5 minutes) to process such a big number of intervals
@@ -3805,7 +3743,7 @@ namespace BlendMonitor.Service
                                                     
                                                     // Set the function back value
                                                     rtrnData = RetStatus.SUCCESS;
-                                                    // JO - May 04: set the process_sample_flag to OFF after processing the sample
+                                                    // set the process_sample_flag to OFF after processing the sample
                                                     await _repository.SetProcessSampleFlag(curblend.lngID);                                                   
                                                 }
                                             }// conditions to perform LINEPROP for multiperiod
@@ -4228,17 +4166,17 @@ namespace BlendMonitor.Service
 
             // component interval vols are used for calling GAMS interface to do
             // line prop calculations, the comp names are thus needed
-            arCompIntVol = new double[(intNComps - 1)];
-            arCompBldVol = new double[(intNComps - 1)];
-            arDltVol = new double[(intNComps - 1)];
-            arAddDltVol = new double[(intNComps - 1)];
-            arAddCompIntVol = new double[(intNComps - 1)];
-            arAddCompBldVol = new double[(intNComps - 1)];
+            arCompIntVol = new double[(intNComps)];
+            arCompBldVol = new double[(intNComps)];
+            arDltVol = new double[(intNComps)];
+            arAddDltVol = new double[(intNComps)];
+            arAddCompIntVol = new double[(intNComps)];
+            arAddCompBldVol = new double[(intNComps)];
 
             //'initialize value time array for components on the blender, if neccessary
             if (!gArCompValTime[intBldrIdx].blnArraySet)
             {
-                gArCompValTime[intBldrIdx].arValueTime = new DateTime[(intNComps - 1)];
+                gArCompValTime[intBldrIdx].arValueTime = new DateTime[(intNComps)];
                 for (intI = 0; (intI
                             <= (intNComps - 1)); intI++)
                 {
@@ -4279,11 +4217,13 @@ namespace BlendMonitor.Service
             dblNewVol = 0;
             dblTotCompIntVol = 0;
             dblTotCompBldVol = 0;
-            intStationNumber = 1;
+            //------------check----------------------
+            //intStationNumber = 1;
+            intStationNumber = 0;
             // Array for recording blend stations that have been processed
-            arStationsDone = new double?[(intTotNStations - 1)];
+            arStationsDone = new double?[(intTotNStations)];
             blnRollBack = true;
-            for (intI = 0; intI < (intNComps - 1); intI++)
+            for (intI = 0; intI <= (intNComps - 1); intI++)
             {
                 //'Set the total component vol to zero at the beginning of the processing
                 dblTotalVol = 0;
@@ -4304,7 +4244,7 @@ namespace BlendMonitor.Service
 
                     // get the Usage Name for the given blend Component
                     strUsageName = await GetBldMatUsage(curblend.lngID, vntCompsData[intI].WildFlagTid);
-                    // JO - Dec. 03: Get component Rcp Constraint Type
+                    //  Get component Rcp Constraint Type
                     List<BldCompUsage> BldCompUsageData = await _repository.GetBldCompUsage(curblend.lngID, vntCompsData[intI].MatId);
 
                     if (BldCompUsageData.Count() > 0)
@@ -4325,7 +4265,7 @@ namespace BlendMonitor.Service
 
                     for (int i = 0; i < intNStations; i++)
                     {
-                        intStationNum = (intStationNum + 1);
+                        //intStationNum = (intStationNum + 1);
                         arStationId[intStationNum] = GetBldrStationsDataList[i].StationId;
                         strStationName = GetBldrStationsDataList[i].StationName;
                         lngWildStationTid = GetBldrStationsDataList[i].WildFlagTid;
@@ -4461,7 +4401,7 @@ namespace BlendMonitor.Service
                                     arAddDltStatVol[intStationNum] = 0;
                                 }
 
-                                // JO - Sep, 03: ZERO COMP RCP Handling
+                                //  ZERO COMP RCP Handling
                                 // If a rcp is meant to be zero in the ABC, then skip msgs
                                 if ((strRcpConstraintType != "ZERO_OUT"))
                                 {
@@ -4594,7 +4534,7 @@ namespace BlendMonitor.Service
                     // BDS 6-Jun-2012 PQ-D0078 Record aggregate data quality of volume totalizer tags in lineup
                     vntValQuality = strAggregateQuality;
                     // BDS 6-Jun-2012 PQ-D0078
-                    // JO - April 04: Handling switching of multiple stations in active/paused mode
+                    //  Handling switching of multiple stations in active/paused mode
                     // check for previous lineup (stations) and add those stored volumes to the current total station vol
                     // call function to get prev vol
                     if ((strUsageName != "ADDITIVE"))
@@ -4608,7 +4548,7 @@ namespace BlendMonitor.Service
                 }
                 else
                 {
-                    // JO - Dec. 03: Get component Rcp Constraint Type
+                    //  Get component Rcp Constraint Type
                     List<BldCompUsage> BldCompUsageList = await _repository.GetBldCompUsage(curblend.lngID, vntCompsData[intI].MatId);
 
                     if (BldCompUsageList.Count() > 0)
@@ -4738,7 +4678,7 @@ namespace BlendMonitor.Service
                     }
                     else if (dblTotalVol == vntCompBldVol)
                     {
-                        // JO - Sep, 03: ZERO COMP RCP Handling.  Skip Msg
+                        //  ZERO COMP RCP Handling.  Skip Msg
                         if ((strRcpConstraintType != "ZERO_OUT"))
                         {
                             // Only issue msg on debug
@@ -4830,7 +4770,7 @@ namespace BlendMonitor.Service
                     }
                     else if ((dblAddTotalVol == vntCompBldVol.Value))
                     {
-                        // JO - Sep, 03: ZERO COMP RCP Handling. Skip msg
+                        // ZERO COMP RCP Handling. Skip msg
                         if ((strRcpConstraintType != "ZERO_OUT"))
                         {
                             // Only issue msg on debug
@@ -4946,7 +4886,9 @@ namespace BlendMonitor.Service
             //'calculate interval and blend cost
             dblIntCost = 0;
             dblBldCost = 0;
-            intStationNumber = 1;
+            //--------------------------checked------------------
+            intStationNumber = 0;
+            //intStationNumber = 1;
             vntActRcp = CompBld.ActRecipe;
             vntAvgRcp = CompBld.AvgRecipe;
             vntCompCost = CompBld.Cost;
@@ -4977,7 +4919,7 @@ namespace BlendMonitor.Service
                     if ((dblTotCompIntVol > 1E-06))
                     {
                         dblIntRcp = (arCompIntVol[intI] / dblTotCompIntVol);
-                        //    JAIME: To set the Int Recipe to display in the BO
+                        //     To set the Int Recipe to display in the BO
                         dblIntRcp = Math.Round(dblIntRcp, 5);
                         await _repository.SetIntRcp((dblIntRcp * 100),curblend.lngID,vntCompsData[intI].MatId,curblend.intCurIntv);
                     }
@@ -5187,10 +5129,10 @@ namespace BlendMonitor.Service
                     ((gArBldFinishTime[intBldrIdx] != cdteNull) && (curblend.intCurIntv > 1))))
                 {
                     //            Or (gIntProcLineProp[intBldrIdx] = 2 And curblend.intCurIntv > 1) Then
-                    //          'JO - Aug, 03: Move to the beginning of the program
+                    //           Move to the beginning of the program
                     //          Set up global array of prdgrp IDs
                     //          GetPrdgrpIDs
-                    // JO: Nov. 14, 2006: If blend is finished in RBC, then close current interval and open a new one.
+                    // If blend is finished in RBC, then close current interval and open a new one.
                     // The TQI will be set for TMon to perform it and blend will be closed in the next cycle of Bmon
                     // Note that all remaining volume was allocated in the previuos interval to be accounted in the last TQI
                     if ((gArBldFinishTime[intBldrIdx] != cdteNull) && (curblend.intCurIntv > 1))
@@ -5198,8 +5140,7 @@ namespace BlendMonitor.Service
                         await ChkIntervals(intBldrIdx,curblend,enumDebugLevel);
                     }
 
-                    // JOJOJOJOJOJOJOJ
-                    //         If curblend.intCurIntv > gArPrevBldData[intBldrIdx].intCurIntv And curblend.intCurIntv > 1 Then
+                    
                     // Get the Inteval volumes for the previous interval to pass it to GAMS
                     List<CompIntVols> CompIntVolsList = await _repository.CompIntVols(curblend.lngID,gArPrevBldData[intBldrIdx].intCurIntv);
                     
@@ -5214,7 +5155,7 @@ namespace BlendMonitor.Service
                         {
                             //If ABCdataEnv.rscmdCompIntVols.Fields("VOLUME").Value <> 0 Then
                             //Exclude additives to pass comps to opt
-                            Array.Resize(ref arCompIntVol, intI);
+                            Array.Resize(ref arCompIntVol, intI + 1);
 
                             arCompIntVol[intI] = (CompIntVolsobj.Volume == null) ? 0 : Convert.ToDouble(CompIntVolsobj.Volume);
                             dblSumVol = (dblSumVol + arCompIntVol[intI]);
@@ -5237,7 +5178,7 @@ namespace BlendMonitor.Service
                                 "", "", "", res);
                         }
 
-                        //  Jaime: if calcprop_flag="YES" in abc_blenders, then proccess LINEPROP
+                        //   if calcprop_flag="YES" in abc_blenders, then proccess LINEPROP
                         if (((vntBldrsData[intBldrIdx].CalcpropFlag) == "YES") && (curblend.sngCurVol != 0) && (dblSumVol > 0))
                         {
                             // call MODEL_LOCAL to do line property calculation for previous interval
@@ -5259,7 +5200,7 @@ namespace BlendMonitor.Service
                     }
 
                         // if # of components > 1
-                        // JO - Aug, 03: Added a bias Calc parameter to diff, between calc bias types.  This call is for
+                        // Added a bias Calc parameter to diff, between calc bias types.  This call is for
                         // the common bias calc done every new interval.  This calls updates the Anzr values only (prev calc bias logic)
                         // Note: That calcbias sub has been moved to this place to calc bias only when a new interval is created, just
                         // after LINEPROP calc
@@ -5271,8 +5212,8 @@ namespace BlendMonitor.Service
 
             // Process samples if needed in ACTIVE or PAUSED states
             intSampleResult = await ProcessSamples(intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
-            // JO - Sep, 03: Set tqi_now_flag to "YES" right after LINEPROP because of the sampling or regular LINEPROP
-            // Jan. 03,03: Set the TQI_NOW_FLAG=YES
+            // Set tqi_now_flag to "YES" right after LINEPROP because of the sampling or regular LINEPROP
+            // Set the TQI_NOW_FLAG=YES
             if ((curblend.intCurIntv > gArPrevBldData[intBldrIdx].intCurIntv && vntBldrsData[intBldrIdx].CalcpropFlag == "YES"
                 && curblend.intCurIntv > 1 && gintOptResult == RetStatus.SUCCESS && gArBldFinishTime[intBldrIdx] == cdteNull) ||
                 (gArBldFinishTime[intBldrIdx] != cdteNull && curblend.intCurIntv > 1 && vntBldrsData[intBldrIdx].CalcpropFlag == "YES"
@@ -5383,11 +5324,11 @@ namespace BlendMonitor.Service
 
                 }
 
-                // JO: FEB, 03: Get all the stations used by this component/lineup
+                // Get all the stations used by this component/lineup
                 // $$$$$$$$$$$$$$$
                 if (((gstrDownloadType == "STATION") || (gstrDownloadType == "LINEUP")))
                 {
-                    // JO: Feb, 03: Check the comp tank index fb selection
+                    // Check the comp tank index fb selection
                     lngLineupID = (BldrSrcSlctfbTidsObj.LineUpId == null) ? -1 : Convert.ToDouble(BldrSrcSlctfbTidsObj.LineUpId);
                     lngMatId = (BldrSrcSlctfbTidsObj.MatId == null) ? -1 : Convert.ToDouble(BldrSrcSlctfbTidsObj.MatId);
                     List<AbcTanks> DataTankIDData = await _repository.GetDataTankID(vntSrcTankID);
@@ -5401,7 +5342,7 @@ namespace BlendMonitor.Service
                     {
                         lngTankSelFbTID = (BldrStationsDataObj.TankFeedbackTid==null)? -1: Convert.ToDouble(BldrStationsDataObj.TankFeedbackTid);
                         lngLineupSelFBTID = (BldrStationsDataObj.LineupFeedbackTid == null) ? -1 : Convert.ToDouble(BldrStationsDataObj.LineupFeedbackTid);
-                        // JO: Feb, 03: feedback warnings the Station interface
+                        // feedback warnings the Station interface
                         if (lngTankSelFbTID != -1)
                         {
                             // Get ABC Tank Selected DCS Index and compare with the index tank sel feedback
@@ -5446,7 +5387,7 @@ namespace BlendMonitor.Service
                         }
                     }                    
 
-                    // JO: feb. 03: get the blender_comps.lineup_feedback_tid
+                    // get the blender_comps.lineup_feedback_tid
                     lngLineupSelFBTID = -1;
 
                     List<AbcBlenderComps> AllBldrCompsData = await _repository.GetAllBldrComps(vntBldrsData[intBldrIdx].Id);
@@ -5562,7 +5503,7 @@ namespace BlendMonitor.Service
 
                 if ((gstrDownloadType == "STATION") || (gstrDownloadType == "LINEUP"))
                 {
-                    // JO: Feb, 03: Blenders.tank_FEEDBACK_tid and
+                    //  Blenders.tank_FEEDBACK_tid and
                     // blenders.lineup_feedback_tid
                     lngTankSelFbTID = -1;
                     lngLineupSelFBTID = -1;
@@ -6410,6 +6351,1568 @@ namespace BlendMonitor.Service
             // TODO: Exit Function: Warning!!! Need to return the value
             return rtnData;
         }
+        private async Task<int> SwingCompTank(int intBldrIdx, List<AbcBlenders> vntBldrsData, CurBlendData curblend, DebugLevels enumDebugLevel)
+        {
+            string strSwingState;
+            string strAutoSwingFlag;
+            string strAbcServFlag;
+            string strTankName;
+            string strSrceTankName;
+            string strToTankName;
+            string strCriteriaName;
+            double lngSwingTID;
+            double lngSwingOccurredTID;
+            double lngMatId;
+            double lngToTankID;
+            double lngPreselTID;
+            double lngPreselOFFTID;
+            double lngSelTID;
+            double lngSelOFFTID;
+            double lngTankSelectNumTid;
+            double lngTankPreSelectNumTid;
+            DcsTag tagSwingOccurred = new DcsTag();
+            DcsTag tagPrdLnupSlctFb = new DcsTag(); ;
+            DcsTag tagSwing = new DcsTag(); ;
+            double dblSeqVolUsed;
+            double dblMatVolUsed;
+            double dblSumVolUsed;
+            double dblCriteriaNumberLmt;
+            double dblMinvol;
+            double dblAvailVol;
+            double dblMaxVol;
+            double dblSwgTimeOut;
+            int intSwingSeq;
+            double lngSrcTankID = 0;
+            double? vntDcsServTid;
+            double sngCompVolume;
+            DateTime dteCriteriaTimeLmt = new DateTime();
+            bool blnRollBack;
+            DcsTag tagPermissive = new DcsTag();
+            double lngTankPreselTID;
+            double lngLineupPreselTID;
+            double lngTOLineupID = 0;
+            double lngFromLineupID;
+            double lngLineupSelTID;
+            int intDCSTankNum = 0;
+            int intDCSLineupNum;
+            string strLineupName = "";
+            string strCompName;
+            // *****
+            string res = "";
+            //' COMPONENT SWING: Get blender source selection tags (Comp Current tanks in use)
+            List<BldrSrcSlctfbTids> BldrSrcSlctfbTidsData = await _repository.GetBldrSrcSlctfbTids(vntBldrsData[intBldrIdx].Id, curblend.lngID);
+
+
+            //get download OK tag (permissive tag) value from ABC_TAGS
+            AbcTags DataRes = await _repository.GetTagNameAndVal(vntBldrsData[intBldrIdx].DownloadOkTid);
+            tagPermissive.vntTagName = DataRes.Name;
+            tagPermissive.vntTagVal = (DataRes.ReadValue.ToString() == null) ? ((int)OnOff.OFF).ToString() : DataRes.ReadValue.ToString();
+
+            foreach (BldrSrcSlctfbTids BldrSrcSlctfbTidsObj in BldrSrcSlctfbTidsData)
+            {
+                lngSrcTankID = BldrSrcSlctfbTidsObj.TankId;
+                lngFromLineupID = (BldrSrcSlctfbTidsObj.LineUpId == null) ? -1 : (double)BldrSrcSlctfbTidsObj.LineUpId;
+                lngMatId = (BldrSrcSlctfbTidsObj.MatId == null) ? -1 : (double)BldrSrcSlctfbTidsObj.MatId;
+
+                //'Get the blend swing data for a specific from tank
+                List<BlendSwingsData> BlendSwingsDataList = await _repository.BlendSwingsData("COMPONENT", (int)lngSrcTankID, curblend.lngID);
+                // Setting the preselection of all the tanks to OFF if there is no swing record configured for the tank in use
+                if (BlendSwingsDataList.Count() > 0)
+                {
+                    // Get the abc_blender_sources.preselection_tid for all tanks with this material
+                    List<AbcBlenderSources> BldrSrcPreselTIDData = await _repository.GetBldrSrcPreselTID(vntBldrsData[intBldrIdx].Id, curblend.lngID, lngMatId, "%");
+                    foreach (AbcBlenderSources BldrSrcPreselTIDObj in BldrSrcPreselTIDData)
+                    {
+                        lngPreselTID = (BldrSrcPreselTIDObj.PreselectionTid == null) ? -1 : (double)BldrSrcPreselTIDObj.PreselectionTid;
+                        //  Reset Write value=0 for the Preselection tid
+                        if (lngPreselTID != -1 && Convert.ToInt32(tagPermissive.vntTagVal) == (int)OnOff.ON_)
+                        {
+                            await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngPreselTID);
+                        }
+                    }
+
+                    // Get all the stations used by this component/lineup
+                    List<BldrStationsData> BldrStationsDataList = await _repository.GetBldrStationsData(lngFromLineupID, vntBldrsData[intBldrIdx].Id);
+                    foreach (BldrStationsData BldrStationsDataObj in BldrStationsDataList)
+                    {
+                        lngTankPreselTID = (BldrStationsDataObj.TankPreSelectNumTid == null) ? -1 : (double)BldrStationsDataObj.TankPreSelectNumTid;
+                        lngLineupPreselTID = (BldrStationsDataObj.LineupPreSelTid == null) ? -1 : (double)BldrStationsDataObj.LineupPreSelTid;
+
+                        //Set to OFF ("0") to tank presel/lineup presel indexes to DCS using the Station interface
+                        if (Convert.ToInt32(tagPermissive.vntTagVal) == (int)OnOff.ON_)
+                        {
+                            if (lngTankPreselTID != -1)
+                            {
+                                await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngTankPreselTID);
+                            }
+
+                            if (lngLineupPreselTID != -1)
+                            {
+                                await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngLineupPreselTID);
+                            }
+
+                        }
+                    }
+                    //get the blender_comps.lineup_presel_tid
+                    lngLineupPreselTID = -1;
+
+                    List<AbcBlenderComps> AllBldrCompsList = await _repository.GetAllBldrComps(vntBldrsData[intBldrIdx].Id);
+                    List<AbcBlenderComps> AllBldrCompsListFlt = new List<AbcBlenderComps>();
+
+                    if (AllBldrCompsList.Count() > 0)
+                    {
+                        AllBldrCompsListFlt = AllBldrCompsList.Where<AbcBlenderComps>(row => row.MatId == lngMatId).ToList();
+                        if (AllBldrCompsListFlt.Count() > 0)
+                        {
+                            lngLineupPreselTID = (AllBldrCompsListFlt[0].LineupPreselTid == null) ? -1 : (double)AllBldrCompsListFlt[0].LineupPreselTid;
+                        }
+                    }
+
+                    // Feb. 03: Download lineup indexes to DCS using the blender comps interface
+                    if (lngLineupPreselTID != -1 && Convert.ToInt32(tagPermissive.vntTagVal) == (int)OnOff.ON_)
+                    {
+                        // set to OFF the preslected lineup tag
+                        await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngLineupPreselTID);
+                    }
+
+
+                }
+                foreach (BlendSwingsData BlendSwingsDataObj in BlendSwingsDataList)
+                {
+                    strSwingState = (BlendSwingsDataObj.SwingState == null) ? "" : BlendSwingsDataObj.SwingState;
+                    lngMatId = BlendSwingsDataObj.FromTkMatId;
+                    lngToTankID = BlendSwingsDataObj.ToTkId;
+                    dblCriteriaNumberLmt = (BlendSwingsDataObj.CriteriaNumLmt == null) ? 0 : (double)BlendSwingsDataObj.CriteriaNumLmt;
+                    dteCriteriaTimeLmt = (BlendSwingsDataObj.CriteriaTimLmt == null) ? dteCriteriaTimeLmt : Convert.ToDateTime(BlendSwingsDataObj.CriteriaTimLmt);
+                    strAutoSwingFlag = BlendSwingsDataObj.AutoSwingFlag;
+                    // get the comp name
+                    strCompName = await _repository.GetCompName(lngMatId);
+
+                    List<double?> CompLineupData = await _repository.GetCompLineup(curblend.lngID, lngMatId, lngToTankID);
+
+                    if (CompLineupData.Count() > 0)
+                    {
+                        lngTOLineupID = (double)CompLineupData[0];
+                    }
+
+                    //  Update blend source sequences table to hold the new time in
+                    if (gblnCompSwgTimeIn[intBldrIdx] == false)
+                    {
+                        await _repository.SetBlendSourceSeqData(curblend.lngID, lngMatId, lngSrcTankID, curblend.dteActualStart);
+                        gblnCompSwgTimeIn[intBldrIdx] = true;
+                    }
+
+                    AbcBlenderComps BldrCompsSwingOccurID = await _repository.GetBldrCompsSwingOccurID(vntBldrsData[intBldrIdx].Id, curblend.lngID, lngSrcTankID, lngMatId);
+
+                    lngSwingOccurredTID = (BldrCompsSwingOccurID.SwingOccurredTid == null) ? -1 : (double)BldrCompsSwingOccurID.SwingOccurredTid;
+                    lngSwingTID = (BldrCompsSwingOccurID.SwingTid == null) ? -1 : (double)BldrCompsSwingOccurID.SwingTid;
+
+                    if (lngSwingOccurredTID != -1)
+                    {
+                        DataRes = await _repository.GetTagNameAndVal(lngSwingOccurredTID);
+                        tagSwingOccurred.vntTagName = DataRes.Name;
+                        tagSwingOccurred.vntTagVal = DataRes.ReadValue.ToString();
+                    }
+                    else
+                    {
+                        tagSwingOccurred.vntTagName = null;
+                        tagSwingOccurred.vntTagVal = ((int)OnOff.OFF).ToString();
+                    }
+
+                    if (tagSwingOccurred.vntTagVal == null)
+                    {
+                        tagSwingOccurred.vntTagVal = ((int)OnOff.OFF).ToString();
+                    }
+
+                    if (lngSwingTID != -1)
+                    {
+                        List<AbcTags> ReadWriteVal = await _repository.GetReadWriteVal(lngSwingTID);
+                        if (ReadWriteVal.Count() > 0)
+                        {
+                            tagSwing.vntTagName = (ReadWriteVal[0].Name == null) ? null : ReadWriteVal[0].Name;
+                            tagSwing.vntTagVal = (ReadWriteVal[0].WriteValue == null) ? ((int)OnOff.OFF).ToString() : ReadWriteVal[0].WriteValue.ToString();
+                            // June 04, 03: Force to check for time out for active swings, even if the write values of
+                            // this tag is OFF
+                            if ((strSwingState == "ACTIVE"))
+                            {
+                                tagSwing.vntTagVal = ((int)OnOff.ON_).ToString();
+                            }
+
+                        }
+                        else
+                        {
+                            tagSwing.vntTagName = null;
+                            tagSwing.vntTagVal = ((int)OnOff.OFF).ToString();
+                        }
+                    }
+                    else
+                    {
+                        tagSwing.vntTagName = null;
+                        tagSwing.vntTagVal = ((int)OnOff.OFF).ToString();
+                    }
+
+                    if (strSwingState == "ACTIVE" || (strSwingState == "READY" && tagSwing.vntTagVal == ((int)OnOff.OFF).ToString() && tagSwingOccurred.vntTagVal == ((int)OnOff.ON_).ToString()))
+                    {
+                        if (tagSwingOccurred.vntTagVal == ((int)OnOff.ON_).ToString())
+                        {
+                            //'Update the abc_blend_sources=NO for the from_tk_id and to YES for the to_tk_id
+                            await _repository.SetAbcBlendInUseFlag(curblend.lngID, lngMatId, lngToTankID, "NO");
+                            await _repository.SetAbcBlendInUseFlag2(curblend.lngID, lngMatId, lngToTankID, "NO");
+
+                            //' update blend swings table
+                            await _repository.SetBlendSwingStateAndDoneAt2(lngSrcTankID, lngToTankID, curblend.lngID);
+
+                            //' Get tank Names
+                            strSrceTankName = await _repository.GetTankName(lngSrcTankID);
+                            strToTankName = await _repository.GetTankName(lngToTankID);
+
+
+                            // ' Log a message that swing is complete
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN79), programName, "BL-" + curblend.lngID, strSrceTankName, strToTankName,
+                                        curblend.strName, "", "", "", res);
+
+                            // Set to false thi flag to redim the comp number of props for
+                            // the new to tank when a swing, in case the number of props is different
+                            gArSrcTkPrpValTime[intBldrIdx].blnArraySet = false;
+                            List<double> BldSourceSwgSeqData = await _repository.GetBldSourceSwgSeq(curblend.lngID, lngMatId);
+                            if (BldSourceSwgSeqData.Count() > 0)
+                            {
+                                intSwingSeq = (BldSourceSwgSeqData[0] == null) ? 0 : (int)BldSourceSwgSeqData[0];
+                            }
+                            else
+                            {
+                                intSwingSeq = 0;
+                            }
+
+                            //  Get the Volume used of this component in the blend
+                            //retun 0 if null
+                            AbcBlendComps BldMatVol = await _repository.GetBldMatVol(curblend.lngID, lngMatId);
+                            dblMatVolUsed = (double)BldMatVol.Volume;
+                            //  Get the sum of vol used of this component for all the sequences
+                            dblSumVolUsed = (double) await _repository.GetBldSourceSumVolUsed(curblend.lngID, lngMatId);
+
+                            //  Get the Vol used for updating the abc_blend_source_seq
+                            dblSeqVolUsed = (dblMatVolUsed - dblSumVolUsed);
+
+                            // Update blend source sequences table
+                            await _repository.SetBlendSourceSeqData2(curblend.lngID, lngMatId, lngSrcTankID, intSwingSeq, dblSeqVolUsed);
+
+                            //  create new record in blend source sequences table with the to tank id
+                            await _repository.InsetBlendSourceSeqData(curblend.lngID, lngMatId, lngToTankID, intSwingSeq + 1);
+                            
+                            lngSelTID = -1;
+                            // Get the abc_blender_sources.selection_tid for the to tank id
+                            List<AbcBlenderSources> BldrSrcPreselTID = await _repository.GetBldrSrcPreselTID(vntBldrsData[intBldrIdx].Id,curblend.lngID,lngMatId,lngToTankID.ToString());
+                            lngSelTID = (BldrSrcPreselTID[0].SelectionTid == null) ? -1 : (double)BldrSrcPreselTID[0].SelectionTid;
+                            lngPreselTID = (BldrSrcPreselTID[0].PreselectionTid == null) ? -1 : (double)BldrSrcPreselTID[0].PreselectionTid;
+                            
+                            if (lngSelTID != -1)
+                            {
+                                // Set Write value=1 for the selection tid
+                                await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSelTID);
+                            }
+
+                            // Set selection tid for sources
+                            // Get the abc_blender_sources.preselection_tid/selection_tid for all tanks with this material
+                            lngPreselOFFTID = -1;
+                            lngSelOFFTID = -1;
+                            BldrSrcPreselTID = await _repository.GetBldrSrcPreselTID(vntBldrsData[intBldrIdx].Id,curblend.lngID,lngMatId,"%");
+
+                            foreach (AbcBlenderSources BldrSrcPreselTIDObj in BldrSrcPreselTID)                            
+                            {
+                                lngPreselOFFTID = (BldrSrcPreselTIDObj.PreselectionTid == null) ? -1 : (double)BldrSrcPreselTIDObj.PreselectionTid;
+                                lngSelOFFTID = (BldrSrcPreselTIDObj.SelectionTid == null) ? -1 : (double)BldrSrcPreselTIDObj.SelectionTid;
+                                if (lngSelOFFTID != lngSelTID)
+                                {
+                                    //  reset Write value=0 for the selection  tid
+                                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngSelOFFTID);
+                                }
+
+                                if (lngPreselOFFTID != lngPreselTID)
+                                {
+                                    //  reset Write value=0 for the Preselection tid
+                                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngPreselOFFTID);
+                                }
+                            }
+
+                            List<AbcTanks> DataTankIDData = await _repository.GetDataTankID(lngToTankID);
+
+                            strTankName = DataTankIDData[0].Name;
+                            strAbcServFlag = DataTankIDData[0].AbcServiceFlag;
+                            vntDcsServTid = DataTankIDData[0].DcsServiceTid;
+                            if (gstrDownloadType == "STATION" || gstrDownloadType == "LINEUP")
+                            {
+                                intDCSTankNum = (DataTankIDData[0].DcsTankNum == null) ? -1 : (int)DataTankIDData[0].DcsTankNum;
+                            }
+
+                            //  Get all the stations having this component
+                            if (gstrDownloadType == "STATION" || gstrDownloadType == "LINEUP")
+                            {
+                                List<BldrStationsData> BldrStationsDataList = await _repository.GetBldrStationsData(lngTOLineupID, vntBldrsData[intBldrIdx].Id);
+
+                                foreach (BldrStationsData BldrStationsDataObj in BldrStationsDataList)                                
+                                {
+                                    lngTankSelectNumTid = (BldrStationsDataObj.TankSelectNumTid == null) ? -1 : (double)BldrStationsDataObj.TankSelectNumTid;
+                                    lngLineupSelTID = (BldrStationsDataObj.LineupSelTid == null) ? -1 : (double)BldrStationsDataObj.LineupSelTid;
+                                    if (lngTankSelectNumTid != -1 && intDCSTankNum != -1)
+                                    {
+                                        // Write the DCS Select Tank number to the DCS
+                                        await _repository.SetWriteTagVal(intDCSTankNum, "YES", lngTankSelectNumTid);
+                                    }
+
+                                    // Feb. 17, 03: Download lineup indexes to DCS using the Station interface
+                                    if (lngLineupSelTID != -1)
+                                    {
+                                        // get DCS Lineup index if selected lineup id is not null
+                                        if (lngTOLineupID != -1)
+                                        {
+                                            AbcCompLineups DCSCompLineupNum = await _repository.GetDCSCompLineupNum(lngTOLineupID);
+                                            intDCSLineupNum = (int)DCSCompLineupNum.DcsLineupNum;
+                                            strLineupName = DCSCompLineupNum.Name;                                            
+                                        }
+                                        else
+                                        {
+                                            intDCSLineupNum = -1;
+                                        }
+
+                                        if (intDCSLineupNum != -1)
+                                        {
+                                            // Write the Selected DCS LINEUP number to the DCS
+                                            await _repository.SetWriteTagVal(intDCSLineupNum, "YES", lngLineupSelTID);
+                                        }
+                                        else
+                                        {
+                                            // IN BLEND ^1, COMP ^2, DCS LINEUP NUM IS NULL FOR LINEUP ^3.  CMD SEL/PRESEL IGNORED
+                                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN96), programName, "BL-" + curblend.lngID, curblend.strName, strCompName,
+                                        strLineupName, "", "", "", res);
+                                        }
+                                    }
+                                }
+                               
+                                // select the blender_comps.lineup_sel_tid
+                                lngLineupSelTID = -1;
+
+                                List<AbcBlenderComps> AllBldrComps = await _repository.GetAllBldrComps(vntBldrsData[intBldrIdx].Id);
+                                List<AbcBlenderComps> AllBldrCompsFlt = new List<AbcBlenderComps>();
+                                if (AllBldrComps.Count() > 0)
+                                {
+                                    AllBldrCompsFlt = AllBldrComps.Where<AbcBlenderComps>(row => row.MatId == lngMatId).ToList();
+                                    
+                                    if (AllBldrCompsFlt.Count() > 0)
+                                    {
+                                        lngLineupSelTID = (AllBldrCompsFlt[0].LineupSelTid == null) ? -1 : (double)AllBldrCompsFlt[0].LineupSelTid;
+                                    }
+
+                                }
+                                
+                                // Download lineup indexes to DCS using the blender comps interface
+                                if (lngLineupSelTID != -1)
+                                {
+                                    // get DCS Lineup index if selected lineup id is not null
+                                    if (lngTOLineupID != -1)
+                                    {
+                                        AbcCompLineups DCSCompLineupNum = await _repository.GetDCSCompLineupNum(lngTOLineupID);
+                                        intDCSLineupNum = (int)DCSCompLineupNum.DcsLineupNum;
+                                        strLineupName = DCSCompLineupNum.Name;
+                                        
+                                    }
+                                    else
+                                    {
+                                        intDCSLineupNum = -1;
+                                    }
+
+                                    if (intDCSLineupNum != -1)
+                                    {
+                                        // Write the Selected DCS LINEUP number to the DCS
+                                        await _repository.SetWriteTagVal(intDCSLineupNum, "YES", lngLineupSelTID);
+                                    }
+                                    else
+                                    {
+                                        // IN BLEND ^1, COMP ^2, DCS LINEUP NUM IS NULL FOR LINEUP ^3.  CMD SEL/PRESEL IGNORED
+                                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN96), programName, "BL-" + curblend.lngID, curblend.strName, strCompName,
+                                        strLineupName, "", "", "", res);
+                                    }
+                                }                               
+                            }
+
+                            //'Insert new Stations into abc_blend_stations for this material according
+                            //'with the new lineup_id
+                            await CreateCompStations(lngTOLineupID, lngSrcTankID, lngToTankID, curblend, lngMatId, intBldrIdx, vntBldrsData, enumDebugLevel);
+
+                            //' Check for in service state of the tank
+                            await ChkTankServ(curblend.lngID, lngToTankID, strTankName, vntDcsServTid, strAbcServFlag, enumDebugLevel);
+
+                            // Reset Write value=0 for the swing tid
+                            await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngSwingTID);
+
+                            // Reset Write value=OFF for the swing occurred tid
+                            await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngSwingOccurredTID);
+                            
+                            // Reset pending state to NULL
+                            curblend.vntPendSt = null;
+                            // set ABC_BLENDS.PENDING_STATE to null
+                            await _repository.SetPendingState(null,curblend.lngID);
+                        }
+                        else if (tagSwingOccurred.vntTagVal == ((int)OnOff.OFF).ToString() && tagSwing.vntTagVal == ((int)OnOff.ON_).ToString())
+                        {
+                            // get current time
+                            gDteCurTime = await _repository.GetCurTime();
+
+                            // get proj default swing time out
+                            AbcProjDefaults SwgDefTimeOutData = await _repository.SwgDefTimeOut();
+                            dblSwgTimeOut = (SwgDefTimeOutData.SwingTimeOut == null) ? 10 : (double)SwgDefTimeOutData.SwingTimeOut;
+                            
+                            if ((DateAndTime.DateDiff("n", gDteCompSwgCmdTime[intBldrIdx], gDteCurTime) > dblSwgTimeOut))
+                            {
+                                // Issue a message - SWING TIME OUT. SWING WAS NOT PERFORMED IN (BLEND)^1
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN75), programName, "SWING_TIME_OUT", "BLEND " + curblend.strName, "",
+                                        "", "", "", "", res);
+                                
+                                // Reset pending state to NULL
+                                curblend.vntPendSt = null;
+                                // set ABC_BLENDS.PENDING_STATE to null
+                                await _repository.SetPendingState(null,curblend.lngID);
+                                //  update blend swings table to hold the incomplete swing state
+                                await _repository.SetBlendSwingState2(lngSrcTankID, lngToTankID, curblend.lngID, "INCOMPLETE");
+
+                                await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngSwingTID);
+                            }
+                        }
+                    }
+                    else if (strSwingState == "READY" && tagSwing.vntTagVal == ((int)OnOff.OFF).ToString())// Issue a Swing Cmd
+                    {
+                        if (curblend.strState.Trim() == "LOADED" || curblend.strState.Trim() == "ACTIVE" || curblend.strState.Trim() == "PAUSED")
+                        {
+                            lngPreselOFFTID = -1;
+                            // Get the abc_blender_sources.preselection_tid for the to tank id
+                            List<AbcBlenderSources> BldrSrcPreselTID = await _repository.GetBldrSrcPreselTID(vntBldrsData[intBldrIdx].Id,curblend.lngID,lngMatId,lngToTankID.ToString());
+                            lngPreselTID = (BldrSrcPreselTID[0].PreselectionTid == null) ? -1 : (double)BldrSrcPreselTID[0].PreselectionTid;
+
+                            // Get the abc_blender_sources.preselection_tid for all tanks with this material
+                            BldrSrcPreselTID = await _repository.GetBldrSrcPreselTID(vntBldrsData[intBldrIdx].Id, curblend.lngID, lngMatId, "%");
+                            
+                            blnRollBack = true;
+                            foreach (AbcBlenderSources BldrSrcPreselTIDObj in BldrSrcPreselTID)                            
+                            {
+                                lngPreselOFFTID = (BldrSrcPreselTIDObj.PreselectionTid == null) ? -1 : (double)BldrSrcPreselTIDObj.PreselectionTid;
+                                if ((lngPreselTID != lngPreselOFFTID))
+                                {
+                                    //  Reset Write value=0 for the Preselection tid
+                                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngPreselOFFTID);
+                                }                                
+                            }
+
+                            List<AbcTanks> DataTankIDData = await _repository.GetDataTankID(lngToTankID);
+
+                            strTankName = DataTankIDData[0].Name;
+                            strAbcServFlag = DataTankIDData[0].AbcServiceFlag;
+                            vntDcsServTid = DataTankIDData[0].DcsServiceTid;
+                            if (gstrDownloadType == "STATION" || gstrDownloadType == "LINEUP")
+                            {
+                                intDCSTankNum = (DataTankIDData[0].DcsTankNum == null) ? -1 : (int)DataTankIDData[0].DcsTankNum;
+                            }
+
+                            // Check for in service state of the tank
+                            await ChkTankServ(curblend.lngID, lngToTankID, strTankName, vntDcsServTid, strAbcServFlag, enumDebugLevel);
+                           
+                            //  set Write value=1 for the Preselection tid
+                            if (lngPreselTID != -1)
+                            {
+                                await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngPreselTID);
+                            }
+
+                            // Get the abc_stations.tank_preselect_num_tid for downloadtype=STATION
+                            if (gstrDownloadType == "STATION" || gstrDownloadType == "LINEUP")
+                            {
+                                //  Get all the stations having this component
+
+                                List<BldrStationsData> BldrStationsData = await _repository.GetBldrStationsData(lngTOLineupID, vntBldrsData[intBldrIdx].Id);
+
+                                foreach (BldrStationsData BldrStationsDataObj in BldrStationsData)                               
+                                {
+                                    lngTankPreSelectNumTid = (BldrStationsDataObj.TankPreSelectNumTid == null) ? -1 : (double)BldrStationsDataObj.TankPreSelectNumTid;
+                                    lngLineupPreselTID = (BldrStationsDataObj.LineupPreSelTid == null) ? -1 : (double)BldrStationsDataObj.LineupPreSelTid; 
+                                    
+                                    if (lngTankPreSelectNumTid != -1 && intDCSTankNum != -1)
+                                    {
+                                        // Write the DCS Preselect Tank number to the DCS
+                                        await _repository.SetWriteTagVal(intDCSTankNum, "YES", lngTankPreSelectNumTid);
+                                    }
+
+                                    // Download lineup indexes to DCS using the Station interface
+                                    if (lngLineupPreselTID != -1)
+                                    {
+                                        // get DCS Lineup index if selected lineup id is not null
+                                        if (lngTOLineupID != -1)
+                                        {
+                                            AbcCompLineups DCSCompLineupNum = await _repository.GetDCSCompLineupNum(lngTOLineupID);
+                                            intDCSLineupNum = (int)DCSCompLineupNum.DcsLineupNum;
+                                            strLineupName = DCSCompLineupNum.Name;
+                                        }
+                                        else
+                                        {
+                                            intDCSLineupNum = -1;
+                                        }
+
+                                        if (intDCSLineupNum != -1)
+                                        {
+                                            // Write the Selected DCS LINEUP number to the DCS
+                                            await _repository.SetWriteTagVal(intDCSLineupNum, "YES", lngLineupPreselTID);
+                                        }
+                                        else
+                                        {
+                                            // IN BLEND ^1, COMP ^2, DCS LINEUP NUM IS NULL FOR LINEUP ^3.  CMD SEL/PRESEL IGNORED
+                                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN96), programName, "BL-" + curblend.lngID, curblend.strName, strCompName,
+                                            strLineupName, "", "", "", res);
+                                        }
+                                    }
+                                }
+
+                                // presele the lineup using blender comps.lineup_Presel_tid
+                                lngLineupPreselTID = -1;
+
+                                List<AbcBlenderComps> AllBldrComps = await _repository.GetAllBldrComps(vntBldrsData[intBldrIdx].Id);
+                                List<AbcBlenderComps> AllBldrCompsFlt = new List<AbcBlenderComps>();
+                                if (AllBldrComps.Count() > 0)
+                                {
+                                    AllBldrCompsFlt = AllBldrComps.Where<AbcBlenderComps>(row => row.MatId == lngMatId).ToList();
+
+                                    if (AllBldrCompsFlt.Count() > 0)
+                                    {
+                                        lngLineupPreselTID = (AllBldrCompsFlt[0].LineupPreselTid == null) ? -1 : (double)AllBldrCompsFlt[0].LineupPreselTid;
+                                    }
+
+                                }
+                                                               
+                                if (lngLineupPreselTID != -1)
+                                {
+                                    // get DCS Lineup index if presel lineup id is not null
+                                    if (lngTOLineupID != -1)
+                                    {
+                                        AbcCompLineups DCSCompLineupNum = await _repository.GetDCSCompLineupNum(lngTOLineupID);
+                                        intDCSLineupNum = (int)DCSCompLineupNum.DcsLineupNum;
+                                        strLineupName = DCSCompLineupNum.Name;
+                                    }
+                                    else
+                                    {
+                                        intDCSLineupNum = -1;
+                                    }                                    
+
+                                    if (intDCSLineupNum != -1)
+                                    {
+                                        // Write the Selected DCS LINEUP number to the DCS
+                                        await _repository.SetWriteTagVal(intDCSLineupNum, "YES", lngLineupPreselTID);
+                                    }
+                                    else
+                                    {
+                                        // IN BLEND ^1, COMP ^2, DCS LINEUP NUM IS NULL FOR LINEUP ^3.  CMD SEL/PRESEL IGNORED
+                                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN96), programName, "BL-" + curblend.lngID, curblend.strName, strCompName,
+                                            strLineupName, "", "", "", res);
+                                    }
+                                }
+                            }// end Station Download
+                        }// not active, paused, loaded
+                         
+                        // For active/paused blends
+                        if (curblend.strState.Trim() == "ACTIVE" || curblend.strState.Trim() == "PAUSED")
+                        {
+                            // 'Get the swing Criteria in abc_blend_swings
+                            strCriteriaName = (BlendSwingsDataObj.CriteriaName == null) ? "" : BlendSwingsDataObj.CriteriaName;
+                            
+                            switch (strCriteriaName)
+                            {
+                                case "NOW":
+                                    await IssueSwingCommand(strAutoSwingFlag, lngSwingTID, lngSrcTankID, lngToTankID, intBldrIdx, vntBldrsData, enumDebugLevel);
+                                    break;
+                                case "TANK VOLUME":
+                                    // Get the data from the from tank id
+                                    List<ASTankID> ASTankIDList = await _repository.GetASTankID((int)lngSrcTankID);
+
+                                    dblMinvol = (ASTankIDList[0].MinVol == null) ? 0 : Convert.ToDouble(ASTankIDList[0].MinVol);
+                                    dblAvailVol = (ASTankIDList[0].AvailVol == null) ? 0 : Convert.ToDouble(ASTankIDList[0].AvailVol);
+                                    
+                                    // Compare the criteria_num_lmt with current vol in the tank
+                                    if (dblCriteriaNumberLmt >= (dblAvailVol + dblMinvol))
+                                    {
+                                        await IssueSwingCommand(strAutoSwingFlag, lngSwingTID, lngSrcTankID, lngToTankID, intBldrIdx, vntBldrsData, enumDebugLevel);
+                                    }
+                                    break;
+                                case "BLEND VOLUME":
+                                    //' Get the Volume of this component in the blend
+                                    AbcBlendComps BldMatVol = await _repository.GetBldMatVol(curblend.lngID, lngMatId);
+                                    sngCompVolume = (BldMatVol.Volume == null) ? 0 : (double)BldMatVol.Volume;
+                                    //'Compare the criteria_num_lmt with current vol in the tank
+                                    if(sngCompVolume >= dblCriteriaNumberLmt)
+                                    {
+                                        await IssueSwingCommand(strAutoSwingFlag, lngSwingTID, lngSrcTankID, lngToTankID, intBldrIdx, vntBldrsData, enumDebugLevel);
+                                    }
+                                    break;
+                                case "SWING TIME":
+                                    // 'get current time
+                                    gDteCurTime = await _repository.GetCurTime();
+                                    //'Compare the criteria_TIM_lmt with current time
+                                    if (gDteCurTime >= dteCriteriaTimeLmt){
+                                        await IssueSwingCommand(strAutoSwingFlag, lngSwingTID, lngSrcTankID, lngToTankID, intBldrIdx, vntBldrsData, enumDebugLevel);
+                                    }
+                                    break;
+                                case "HIGH LIMIT":
+                                    // 'Get the data from the from tank id
+                                    List<ASTankID> ASTankIDList2 = await _repository.GetASTankID((int)lngSrcTankID);
+
+                                    dblMinvol = (ASTankIDList2[0].MinVol == null) ? 0 : Convert.ToDouble(ASTankIDList2[0].MinVol);
+                                    dblMaxVol = (ASTankIDList2[0].MaxVol == null) ? 0 : Convert.ToDouble(ASTankIDList2[0].MaxVol);
+                                    dblAvailVol = (ASTankIDList2[0].AvailVol == null) ? 0 : Convert.ToDouble(ASTankIDList2[0].AvailVol);
+
+                                    if ((dblAvailVol + dblMinvol) >= dblMaxVol)
+                                    {
+                                        await IssueSwingCommand(strAutoSwingFlag, lngSwingTID, lngSrcTankID, lngToTankID, intBldrIdx, vntBldrsData, enumDebugLevel);
+                                    }
+                                    break;
+                                case "LOW LIMIT":
+                                    // 'Get the data from the from tank id
+                                    List<ASTankID> ASTankIDList3 = await _repository.GetASTankID((int)lngSrcTankID);
+
+                                    dblMinvol = (ASTankIDList3[0].MinVol == null) ? 0 : Convert.ToDouble(ASTankIDList3[0].MinVol);
+                                    dblMaxVol = (ASTankIDList3[0].MaxVol == null) ? 0 : Convert.ToDouble(ASTankIDList3[0].MaxVol);
+                                    dblAvailVol = (ASTankIDList3[0].AvailVol == null) ? 0 : Convert.ToDouble(ASTankIDList3[0].AvailVol);
+
+                                    if ((dblAvailVol + dblMinvol) <= dblMinvol)
+                                    {
+                                        await IssueSwingCommand(strAutoSwingFlag, lngSwingTID, lngSrcTankID, lngToTankID, intBldrIdx, vntBldrsData, enumDebugLevel);
+                                    }
+                                    break;
+                            }//switch
+                        }
+                    }
+                }//loop
+            }
+
+            return 0;
+
+        }
+        private async Task<int> IssueSwingCommand(string strAutoSwingFlag, double lngSwingTID, double lngSrcTankID, double lngToTankID, int intBldrIdx, List<AbcBlenders> vntBldrsData, DebugLevels enumDebugLevel)
+        {
+            string res = "";
+            if ((strAutoSwingFlag == "YES"))
+            {
+                //  Issue the swing command
+                if ((gProjDfs.strAllowStartStop == "YES"))
+                {
+                    //  set Write value=1 for the swing tid
+                    await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSwingTID);
+
+                    // set pending state to SWINGING
+                    curblend.vntPendSt = "SWINGING";
+                    await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+
+                    //  update blend swings table to hold the active swing state
+                    await _repository.SetBlendSwingStateAndDoneAt3(lngSrcTankID, lngToTankID, curblend.lngID);
+
+                    gDteCurTime = await _repository.GetCurTime();
+
+                    //  set the Swing Command Time to a global variable
+                    gDteCompSwgCmdTime[intBldrIdx] = gDteCurTime;
+                }
+                else
+                {
+                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName,
+                    "", "", "", "", res);
+
+                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "",
+                    "", "", "", "", res);
+                }
+
+            }
+            else if (gstrRundnFlag != "YES")
+            {
+                //  Issue the Pause command
+                if (gProjDfs.strAllowStartStop == "YES")
+                {
+                    if (curblend.strState.Trim() != "PAUSED")
+                    {
+                        // set pending state to PAUSING
+                        curblend.vntPendSt = "PAUSING";
+                        await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+                        // call PAUSE_BLEND function
+                        await ProcessBldCmd(BlendCmds.PAUSE, intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+                    }
+
+                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "",
+                    "", "", "", "", res);
+                }
+                else
+                {
+                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "PAUSE", gstrBldrName,
+                    "", "", "", "", res);
+
+                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "",
+                    "", "", "", "", res);
+                }
+            }
+            return 0;
+        }
+        private async Task<int> CreateCompStations(double lngTOLineupID, double lngFromTkId, double lngToTkId, CurBlendData curblend, double lngMatId,int intBldrIdx,
+                               List<AbcBlenders> vntBldrsData, DebugLevels enumDebugLevel)
+        {
+            double sngStnId;
+            double sngCurSP;
+            double sngCurOrigSP;
+            double dblMinFlow;
+            double dblMaxFlow;
+            double dblStnMinSum;
+            double dblSumRcp;
+            double dblStnMinSuma;
+            double dblStnMaxSum;
+            double dblRemFlow = 0;
+            bool blnLessStns;
+            bool blnRollBack;
+            int intJ;
+            int intI;
+            int intNStations;
+            int intStnNo = 0;
+            int intNToStations = 0;
+            string strCompName;
+            string strExecute;
+            string strStationName;
+            double[] arStationRcps;
+            double sngStationMin = 0;
+            double sngStationMax = 0;
+            double[] arStationsIds;
+            double sngStationCurRecipe;
+            double[] arToStatLineups = new double[0];
+            double vntSelStationTIDAll;
+            string vntTagName;
+            double vntPumpsData;
+            double lngTankSelectNumTid;
+            double lngMatNumTid;
+            double lngStationId;
+            double lngFromStationId;
+            double lngRcpSpTid;
+            double lngCompTankId;
+            int intSelStation = 0;
+            int intNS;
+            int intDestTankID;
+            int intNRecords;
+            int intNFromStations;
+            int intMatNum;
+            int intTankNum;
+            DcsTag tagSelStation = new DcsTag();
+            DcsTag PumpTag = new DcsTag();
+            bool blnDelete;
+            bool blnSelect;
+            string strUsageName;
+            DcsTag tag = new DcsTag();
+            double lngLineupPreselID;
+            double lngCompLineupID = 0;
+            double lngLineupSelTID;
+            double lngLineupPreselTID;
+            double lngPumpASelTID;
+            double lngPumpBSelTID;
+            double lngPumpCSelTID;
+            double lngPumpDSelTID;
+            double lngPumpXSelTID = 0;
+            int intDCSLineupNum;
+            int intPmpIndex;
+            int intDcsPumpID;
+            string strLineupName = "";
+            string strPumpName;
+            string strModeTag;
+            string strInServFlag;
+            string strRcpConstraintType = "";
+            int intLineEqpOrder;
+            int intNumPumps = 0;
+            double lngPumpAId = 0;
+            double lngPumpBId = 0;
+            double lngPumpCId = 0;
+            double lngPumpDId = 0;
+            double lngPumpXId = 0; 
+            bool blnZeroOut = false;
+            string res = "";
+            double[] vntSelStation = new double[0]; 
+            // Get the stations for the to tank
+            List<double?> CompLineups =  await _repository.GetCompLineups(curblend.lngID,lngMatId,lngToTkId);
+            List<double?> CompLineupsFlt = new List<double?>();
+            if (CompLineups.Count() > 0)
+            {
+                intNRecords = CompLineups.Count();
+                arToStatLineups = new double[intNRecords];
+            }
+
+            foreach (double? CompLineup in CompLineups)            
+            {
+
+                arToStatLineups[intNToStations] = (CompLineup == null) ? -1 : (double)CompLineup;
+                intNToStations = (intNToStations + 1);
+            }
+
+            // Get the stations for the from tank
+            CompLineups = await _repository.GetCompLineups(curblend.lngID, lngMatId, lngFromTkId);
+            
+            if (CompLineups.Count() > 0)
+            {
+                intNFromStations = CompLineups.Count();
+                if ((intNFromStations <= intNToStations))
+                {
+                    for (intI = 1; (intI <= intNToStations); intI++)
+                    {
+                        CompLineupsFlt = CompLineups.Where<double?>(row => row == arToStatLineups[intI]).ToList();
+                        
+                        if (CompLineupsFlt.Count() > 0)
+                        {
+                            lngFromStationId = (double)CompLineupsFlt[0];
+                        }
+                        else
+                        {
+                            lngFromStationId = -1;
+                        }
+
+                        if (CompLineupsFlt.Count() > 0)
+                        {
+                            goto NextStation;
+                        }
+                        else
+                        {
+                            //  Get all the stations tag selection from abc_stations
+                            List<AbcStations> AllBldrStationsData2 = await _repository.GetAllBldrStationsData(vntBldrsData[intBldrIdx].Id);
+                            List<AbcStations> AllBldrStationsDataFlt = AllBldrStationsData2.Where<AbcStations>(row => row.Id == arToStatLineups[intI]).ToList();
+                           
+                            if (AllBldrStationsDataFlt.Count() > 0)
+                            {
+                                sngStationMin = (AllBldrStationsDataFlt[0].Min == null) ? 0 : (double)AllBldrStationsDataFlt[0].Min;
+                                sngStationMax = (AllBldrStationsDataFlt[0].Max == null) ? 0 : (double)AllBldrStationsDataFlt[0].Max;
+
+                                // insert blend_stations records with the this station_id
+                                await _repository.InsertBlendStations(curblend.lngID, lngMatId, arToStatLineups[intI], sngStationMax, sngStationMin);                             
+                            }
+                        }
+
+                        NextStation: { }
+                    }
+
+                    // delete the from stations of they are not included in the collection of to stations                   
+                    blnDelete = true;
+                    foreach (double? CompLineup in CompLineups)
+                    {
+                        lngFromStationId = (CompLineup == null)? 0:(double)CompLineup;
+                        for (intI = 1; (intI <= intNToStations); intI++)
+                        {
+                            if ((lngFromStationId == arToStatLineups[intI]))
+                            {
+                                blnDelete = false;
+                                goto NextFromStation;
+                            }
+
+                        }
+
+                        // Delete this station record since it was not found in the collection of stations for the
+                        // new lineup id (to stations)
+                        if (blnDelete == true && lngFromStationId != 0)
+                        {
+                            // delete from blend comp stations this station
+                            await _repository.DeleteBlendStations(curblend.lngID, lngMatId, lngFromStationId);
+                        }
+
+                        NextFromStation: { }
+                        blnDelete = true;
+                    }
+
+                }
+                else
+                {
+                    //  if From stations > to stations                    
+                    blnDelete = true;
+                    foreach (double? CompLineup in CompLineups)
+                    {
+                        lngFromStationId = (CompLineup == null)? 0:(double)CompLineup;
+                        for (intI = 1; (intI <= intNToStations); intI++)
+                        {
+                            if (lngFromStationId == arToStatLineups[intI])
+                            {
+                                blnDelete = false;
+                                goto NextFromStat;
+                            }
+
+                        }
+
+                        // Delete this station record since it was not found in the collection of stations for the
+                        // new lineup id (to stations)
+                        if (blnDelete == true && lngFromStationId != 0)
+                        {
+                            // delete from blend comp stations this station
+                            await _repository.DeleteBlendStations(curblend.lngID, lngMatId, lngFromStationId);                           
+                        }
+
+                        NextFromStat: { }
+                        blnDelete = true;
+                    }
+                }
+            }
+            else
+            {
+                // If not stations for the from tank create the stations for the to tank
+                // Create blend station records
+                if (lngTOLineupID != -1)
+                {
+                    // delete all blend comp stations records
+                    await _repository.DeleteBlendStation2(curblend.lngID, lngMatId);
+
+                    // insert blend_stations records with the new lineup_id (tank_id)
+                    await _repository.InsertBlendStations(curblend.lngID, lngMatId, lngTOLineupID);                    
+                }
+            }
+
+            // Check if all stations fo the new lineup id are created in abc_blend_stations
+            // Get all stations from abc_blend_stations for this mat_id
+            List <AbcBlendStations> GetBlStationsData = await _repository.GetBlStations(curblend.lngID,lngMatId);
+            List<AbcBlendStations> GetBlStationsDataFlt = new List<AbcBlendStations>();
+
+
+            if (GetBlStationsData.Count() > 0)
+            {
+                for (intI = 1; intI <= intNToStations; intI++)
+                {
+                    GetBlStationsDataFlt = GetBlStationsData.Where<AbcBlendStations>(row => row.StationId == arToStatLineups[intI]).ToList();
+                   
+                    if (GetBlStationsDataFlt.Count() == 0 && arToStatLineups[intI] != -1)
+                    {
+                        // insert blend_stations records with this station_id
+                        await _repository.InsertBlendStations(curblend.lngID, lngMatId, arToStatLineups[intI], sngStationMax, sngStationMin);
+                    }
+                }
+            }
+            else
+            {
+                // Create blend station records
+                if (lngTOLineupID != -1)
+                {
+                    // delete all blend comp stations records
+                    await _repository.DeleteBlendStation2(curblend.lngID, lngMatId);
+
+                    // insert blend_stations records with the new lineup_id (tank_id)
+                    await _repository.InsertBlendStations(curblend.lngID, lngMatId, lngTOLineupID);
+                }
+            }
+
+            if (gstrDownloadType == "STATION" || gstrDownloadType == "LINEUP")
+            {
+                // get the Usage Name for the given blend Component
+                strUsageName = await GetBldMatUsage(curblend.lngID, lngMatId);
+                // Get the Current SP for this component in abc_blend_comps
+                AbcBlendComps BldMatVol = await _repository.GetBldMatVol(curblend.lngID,lngMatId);
+
+                sngCurSP = (BldMatVol.CurRecipe == null) ? 0 : (double)BldMatVol.CurRecipe;
+                // Store the original Curr SP from abc_blend_comps
+                sngCurOrigSP = sngCurSP;
+
+                // handle rcp_constraint Type
+                List<BldCompUsage> BldCompUsageData = await _repository.GetBldCompUsage(curblend.lngID,lngMatId);
+                
+                if (BldCompUsageData.Count() > 0)
+                {
+                    strRcpConstraintType = BldCompUsageData[0].RcpConstraintType;
+                }
+                
+                if (sngCurSP <= 0.01 && (strRcpConstraintType == "ZERO_MIN_MAX" || strRcpConstraintType == "ZERO_OUT"))
+                {
+                    blnZeroOut = true;
+                }
+
+                // Need to split the recipes to station recipes
+                // get stations for this material
+                List<AbcBlendStations> BlStationsData = await _repository.GetBlStations(curblend.lngID,lngMatId);
+
+                strCompName = await _repository.GetCompName(lngMatId);
+                
+                if (BlStationsData.Count() > 0)
+                {
+                    intNStations = BlStationsData.Count();
+
+                    arStationRcps = new double[intNStations];
+                    arStationsIds = new double[intNStations];
+                    dblStnMinSum = 0;
+                    dblStnMaxSum = 0;
+                    intJ = 0;
+                    // With...
+                    if ((intNStations == 1))
+                    {
+                        sngStnId = BlStationsData[0].StationId;
+                        
+                        arStationRcps[intJ] = sngCurSP;
+                        arStationsIds[intJ] = sngStnId;
+                        intJ = (intJ + 1);                       
+                    }
+                    else
+                    {
+                        // if IntNStations > 1
+                        blnLessStns = false;
+                        for (int i = 0; i < BlStationsData.Count(); i++)
+                        {
+                            AbcBlendStations BlStationsObj = BlStationsData[i];                        
+                            // get sum of station min flow and max flows
+                            dblMinFlow = (BlStationsObj.MinFlow == null) ? 0 : (double)BlStationsObj.MinFlow;
+                            dblMaxFlow = (BlStationsObj.MaxFlow == null) ? dblMinFlow : (double)BlStationsObj.MaxFlow;
+                            dblStnMinSum = (dblStnMinSum + dblMinFlow);
+                            dblStnMaxSum = (dblStnMaxSum + dblMaxFlow);
+                            dblRemFlow = ((sngCurSP * (0.01 * Convert.ToDouble(curblend.sngTgtRate))) - dblStnMinSum);
+                            // checking to detect if flow <min flow (allowing 1% error)
+                            if ((dblRemFlow < ((0.01 * dblStnMinSum) * -1)))
+                            {
+                                // Determine the number of stations to be used if the flow < dblStnMinSum
+                                intStnNo = i;//ABCdataEnv.rscmdGetBlStations.AbsolutePosition;
+                                // Revert back the total station min and max by excluding this station
+                                dblStnMinSum = (dblStnMinSum - dblMinFlow);
+                                dblStnMaxSum = (dblStnMaxSum - dblMaxFlow);
+                                dblRemFlow = (dblRemFlow + dblMinFlow);
+                                blnLessStns = true;
+                                break; //Warning!!! Review that break works as 'Exit Do' as it could be in a nested instruction like switch
+                            }
+                            
+                        }
+
+                        // add a tolerance on the max of (0.1)
+                        if ((sngCurSP * 0.01 * curblend.sngTgtRate - dblStnMaxSum) > 0.1 && (blnZeroOut == false))
+                        {
+                            // Issue an error message " Incompatible equipment Min/Max configuration for blender ^1.
+                            // Check Lineup data"
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN29), programName, "BL-" + curblend.lngID, curblend.strName, gstrBldrName,
+                                        "", "", "", "", res);
+                            return 0;
+                        }
+
+                        if (((dblStnMaxSum <= cDblEp) && (blnZeroOut == false)))
+                        {
+                            // Issue an error message " Incompatible equipment Min/Max configuration for blender ^1.
+                            // Check Lineup data"
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN29), programName, "BL-" + curblend.lngID, curblend.strName, gstrBldrName,
+                                        "", "", "", "", res);
+                            return 0;
+                        }
+
+                        if ((curblend.sngTgtRate <= cDblEp))
+                        {
+                            // Issue a message "BAD HEADER FLOW RATE. CHECK TOTAL FLOW TAG OR TARGET RATE FOR BLENDER ^1"
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN31), programName, "BL-" + curblend.lngID, gstrBldrName,"",
+                                        "", "", "", "", res);
+                            return 0;
+                        }
+
+                        // Loop of stations
+                        for (int i = 0; i < BlStationsData.Count(); i++)
+                        {
+                            AbcBlendStations BlStationsObj = BlStationsData[i];
+                            sngStnId = BlStationsObj.StationId;
+                            
+                            if ((i >= intStnNo) && (blnLessStns == true))
+                            {
+                                if ((intStnNo == 1) && (blnZeroOut == false))
+                                {
+                                    // issue a message that "station rcp could not be downloaded for comp^1
+                                    //  in blend ^2 since flow < min flow of stations"
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN30), programName, "BL-" + curblend.lngID, strCompName, curblend.strName,
+                                        "", "", "", "", res);
+                                }
+
+                                // set station rcp =0 for stations whose min flow>rem flow
+                                sngCurSP = 0;                               
+                            }
+                            else
+                            {
+                                dblMinFlow = (BlStationsObj.MinFlow == null) ? 0 : (double)BlStationsObj.MinFlow;
+                                dblMaxFlow = (BlStationsObj.MaxFlow == null) ? 0 : (double)BlStationsObj.MaxFlow;
+                                sngCurSP = (100 * (dblMinFlow + (dblRemFlow * dblMaxFlow / dblStnMaxSum)) / (double)curblend.sngTgtRate);
+                                sngCurSP = Math.Round(sngCurSP, 3);
+                            }
+
+                            arStationRcps[intJ] = sngCurSP;
+                            arStationsIds[intJ] = sngStnId;                        
+                            NEXT_STATION: { }
+                            intJ = (intJ + 1);
+                        }
+                    }
+                    
+                    // Normalize stations recipe and update cur_SP in abc_blend_stations
+                    dblSumRcp = 0;
+                    for (intI = 0; intI <= (intNStations - 1); intI++)
+                    {
+                        // need this for renormalizing recipes after stn. rcp calcs
+                        dblSumRcp = (dblSumRcp + arStationRcps[intI]);
+                    }
+
+                    for (intI = 0; intI <= (intNStations - 1); intI++)
+                    {
+                        if (strUsageName != "ADDITIVE")
+                        {
+                            // Check for zero recipes
+                            if (dblSumRcp != 0 && sngCurOrigSP != 0)
+                            {
+                                arStationRcps[intI] = Math.Round((arStationRcps[intI]/ (dblSumRcp * sngCurOrigSP)), 3);
+                            }
+                            else
+                            {
+                                arStationRcps[intI] = arStationRcps[intI];
+                            }
+
+                        }
+
+                        // update abc_blend_stations with comp current_recipe
+                        await _repository.SetBlendStationsData(curblend.lngID, lngMatId, arStationsIds[intI], arStationRcps[intI]);
+                    }
+                }
+                else
+                {
+                    // Issue a message "RECIPE NOT DOWNLOADED. NO STATIONS ARE IN USE FOR COMP^1 IN BLEND^2"
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN32), programName, "BL-" + curblend.lngID, strCompName, curblend.strName,
+                                       "", "", "", "", res);
+                }               
+            }
+
+            // Download the new equipment (pumps) for the new lineup
+            // get pump data, including inuse_tag_id for this comp
+            // Download pumps based on lineup ID
+            if (lngTOLineupID != -1)
+            {
+                await DownloadLineupCompPmps(intBldrIdx, vntBldrsData, curblend, lngTOLineupID, enumDebugLevel, true);
+            }
+
+            // Nov. 08/2001: Leave the sub if the download type is component
+            if (gstrDownloadType == "COMPONENT")
+            {
+                return 0;
+            }
+
+            // Get all stations from abc_blend_stations  
+            List<AbcBlendStations> AllBldStationsData = await _repository.GetAllBldStations(curblend.lngID);
+            intNStations = AllBldStationsData.Count();
+            vntSelStation = new double[intNStations];
+
+            foreach (AbcBlendStations AllBldStationsObj in AllBldStationsData)            
+            {
+
+                vntSelStation[intSelStation] = (AllBldStationsObj.StationId == null) ? -1 : (double)AllBldStationsObj.StationId;
+                intSelStation = (intSelStation + 1);
+            }
+
+            //  July 13/2001: Deselect others stations of the blender at the beginning of downloading
+            //  Get all the stations tag selection from abc_stations
+            List<AbcStations> AllBldrStationsData = await _repository.GetAllBldrStationsData(vntBldrsData[intBldrIdx].Id);
+
+            // get dest tank ID
+            intDestTankID = (int)await _repository.GetDestTankId(curblend.lngID);
+
+            // Get the component source data            
+            List<CompSrceData> CompSrceDataList = await _repository.GetCompSrceData(curblend.lngID);
+
+            foreach (AbcStations BldrStationsDataObj in AllBldrStationsData)
+            {
+                lngStationId = BldrStationsDataObj.Id;
+                vntSelStationTIDAll = (BldrStationsDataObj.SelectStationTid == null) ? -1 : (double)BldrStationsDataObj.SelectStationTid;
+                lngTankSelectNumTid = (BldrStationsDataObj.TankSelectNumTid == null) ? -1 : (double)BldrStationsDataObj.TankSelectNumTid;                 
+                lngMatNumTid = (BldrStationsDataObj.MatNumTid == null) ? -1 : (double)BldrStationsDataObj.MatNumTid;
+                lngRcpSpTid = (BldrStationsDataObj.RcpSpTagId == null) ? -1 : (double)BldrStationsDataObj.RcpSpTagId;                 
+                lngLineupSelTID = (BldrStationsDataObj.LineupSelTid == null) ? -1 : (double)BldrStationsDataObj.LineupSelTid; 
+                
+                lngPumpASelTID = (BldrStationsDataObj.PumpaSelTid == null) ? -1 : (double)BldrStationsDataObj.PumpaSelTid;
+                lngPumpBSelTID = (BldrStationsDataObj.PumpbSelTid == null) ? -1 : (double)BldrStationsDataObj.PumpbSelTid;
+                lngPumpCSelTID = (BldrStationsDataObj.PumpcSelTid == null) ? -1 : (double)BldrStationsDataObj.PumpcSelTid;
+                lngPumpDSelTID = (BldrStationsDataObj.PumpdSelTid == null) ? -1 : (double)BldrStationsDataObj.PumpdSelTid;
+
+                List<AbcBlendStations> AllBldStationsDataFlt = new List<AbcBlendStations>();
+                List<CompSrceData> CompSrceDataListFlt = new List<CompSrceData>();
+                for (intNS = 0; intNS < AllBldStationsData.Count(); intNS++)
+                {
+                    if (vntSelStation[intNS] != lngStationId)
+                    {
+                        goto lblNextTID;
+                    }
+                    else
+                    {
+                        AllBldStationsDataFlt = AllBldStationsData.Where<AbcBlendStations>(row => row.StationId == lngStationId).ToList();
+                        
+                        if (AllBldStationsDataFlt.Count() > 0)
+                        {
+                            lngMatId = (AllBldStationsDataFlt[0].MatId == null) ? -1 : (double)AllBldStationsDataFlt[0].MatId;
+                        }
+
+                        if (lngMatId != -1)
+                        {
+                            CompSrceDataListFlt = CompSrceDataList.Where<CompSrceData>(row => row.MatId == lngMatId).ToList();
+                            
+                            if (CompSrceDataListFlt.Count() > 0)
+                            {
+                                lngCompLineupID = (CompSrceDataListFlt[0].LineupId == null) ? -1 : (double)CompSrceDataListFlt[0].LineupId;
+                            }
+                            else
+                            {
+                                lngCompLineupID = -1;
+                            }
+                        }
+
+                        // Download the selection of this station to DCS
+                        strStationName = BldrStationsDataObj.Name;
+
+                        // get the comp name
+                        strCompName = await _repository.GetCompName(lngMatId);
+                        // set recipe tags
+                        if (lngRcpSpTid != -1)
+                        {
+                            AbcBlendStations BldStationsData = await _repository.GetBldStationsData(curblend.lngID,lngMatId,lngStationId);
+                            if (BldStationsData != null)
+                            {
+                                sngStationCurRecipe = (BldStationsData.CurSetpoint == null) ? -1 : (double)BldStationsData.CurSetpoint;
+                            }
+                            else
+                            {
+                                sngStationCurRecipe = -1;
+                            }
+                            
+                            if (sngStationCurRecipe != -1)
+                            {
+                                await _repository.SetWriteTagVal((int)sngStationCurRecipe, "YES", lngRcpSpTid);
+
+                                // get RECIPE_SP_TID tag name
+                                vntTagName = await _repository.GetTagName(lngRcpSpTid);
+                                ;
+                                if (enumDebugLevel >= DebugLevels.Medium)
+                                {
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG12), programName, cstrDebug, curblend.strName, sngStationCurRecipe.ToString(),
+                                        strCompName, vntTagName, "", "", res);
+                                }                               
+                            }
+                            else
+                            {
+                                //  Null cur_recipe in the station ^1 used for component ^2. Download canceled
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN80), programName, "BL-" + curblend.lngID, strStationName, strCompName,
+                                        "", "", "", "", res);
+
+                                await FinishBlend(Convert.ToInt32(vntBldrsData[intBldrIdx].Id), curblend, intDestTankID, enumDebugLevel);                                
+                                return 0;
+                            }
+
+                        }
+                        else
+                        {
+                            // warn msg "Recipe_sp_tid tag missing"
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN18), programName, "BL-" + curblend.lngID, "RECIPE_SP_TID", strCompName,
+                                       gstrBldrName, "", "", "", res);
+
+                            await FinishBlend(Convert.ToInt32(vntBldrsData[intBldrIdx].Id), curblend, intDestTankID, enumDebugLevel);
+                            return 0;
+                        }
+
+                        // set select_station_tid to ON in the DCS
+                        if (vntSelStationTIDAll != -1)
+                        {
+                            // set select_station_tid to ON in the DCS
+                            await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", vntSelStationTIDAll);
+                            
+                        }
+                        else if ((gstrDownloadType == "STATION"))
+                        {
+                            // warn msg "Selection_Station_tid tag missing"
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN18), programName, "BL-" + curblend.lngID, "SELECT_STATION_TID", strStationName,
+                                       gstrBldrName, "", "", "", res);
+
+                            await FinishBlend(Convert.ToInt32(vntBldrsData[intBldrIdx].Id), curblend, intDestTankID, enumDebugLevel);
+                            return 0;
+                        }
+
+                        // Download the DCS_Mat_Num to the DCS through DCS_Mat_Num_tid
+                        if (lngMatNumTid != -1)
+                        {
+                            if (lngMatId != -1)
+                            {
+                                AbcMaterials MatNameData =  await _repository.GetMatName((int)lngMatId);
+                                intMatNum = (MatNameData.DcsMatNum == null) ? -1 : (int)MatNameData.DcsMatNum;                                
+                            }
+                            else
+                            {
+                                intMatNum = -1;
+                            }
+
+                            if (intMatNum != -1)
+                            {
+                                // Write the DCS Mat number to the DCS
+                                await _repository.SetWriteTagVal(intMatNum, "YES", lngMatNumTid);
+                            }
+                            else
+                            {
+                                // ^1 IS NULL IN ^2 FOR COMP ^3.  ^4 NOT SELECTED FOR STATION ^5
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN81), programName, "BL-" + curblend.lngID, "MAT_NUM", "ABC_MATERIALS",
+                                       strCompName, "MATERIAL", strStationName, "", res);
+                            }
+
+                        }
+                        else if ((gstrDownloadType == "STATION"))
+                        {
+                            // warn msg "MAT_NUM_TID tag missing"
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN18), programName, "BL-" + curblend.lngID, "MAT_NUM_TID", strStationName,
+                                      gstrBldrName, "", "", "", res);
+
+                            await FinishBlend(Convert.ToInt32(vntBldrsData[intBldrIdx].Id), curblend, intDestTankID, enumDebugLevel);
+                            return 0;                            
+                        }
+
+                        // Download the DCS_Tank_Num to the DCS through Tank_Select_Num_tid
+                        if (lngTankSelectNumTid != -1)
+                        {
+                            CompSrceDataListFlt = CompSrceDataList.Where<CompSrceData>(row => row.MatId == lngMatId).ToList();
+
+                            if (CompSrceDataListFlt.Count() > 0)
+                            {
+                                lngCompTankId = (CompSrceDataListFlt[0].TankId == null) ? -1 : (double)CompSrceDataListFlt[0].TankId;
+                            }
+                            else
+                            {
+                                lngCompTankId = -1;
+                            }                            
+
+                            if (lngCompTankId != -1)
+                            {
+                                List<AbcTanks> DataTankID = await _repository.GetDataTankID(lngCompTankId);
+                                intTankNum = (DataTankID[0].DcsTankNum == null) ? -1 : (int)DataTankID[0].DcsTankNum;
+                            }
+                            else
+                            {
+                                intTankNum = -1;
+                            }
+
+                            if (intTankNum != -1)
+                            {
+                                // Write the DCS Tank number to the DCS
+                                await _repository.SetWriteTagVal(intTankNum, "YES", lngTankSelectNumTid);
+                            }
+                            else
+                            {
+                                // ^1 IS NULL IN ^2 FOR COMP ^3.  ^4 NOT SELECTED FOR STATION ^5
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN81), programName, "BL-" + curblend.lngID, "TANK_NUM", "ABC_TANKS",
+                                      strCompName, "TANK", strStationName, "", res);
+                            }
+
+                        }
+                        else if ((gstrDownloadType == "STATION"))
+                        {
+                            // warn msg "TANK_SELECT_NUM_TID tag missing"
+                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN18), programName, "BL-" + curblend.lngID, "TANK_SELECT_NUM_TID", strStationName,
+                                      gstrBldrName, "", "", "", res);
+
+                            await FinishBlend(Convert.ToInt32(vntBldrsData[intBldrIdx].Id), curblend, intDestTankID, enumDebugLevel);
+                            return 0;
+                        }
+
+                        // Feb. 17, 03: Download lineup indexes to DCS using the Station interface
+                        if (lngLineupSelTID != -1)
+                        {
+                            // get DCS Lineup index if selected lineup id is not null
+                            if (lngCompLineupID != -1)
+                            {
+                                AbcCompLineups DCSCompLineupNum = await _repository.GetDCSCompLineupNum(lngCompLineupID);
+                                intDCSLineupNum = (int)DCSCompLineupNum.DcsLineupNum;
+                                strLineupName = DCSCompLineupNum.Name;
+                            }
+                            else
+                            {
+                                intDCSLineupNum = -1;
+                            }
+
+                            if (intDCSLineupNum != -1)
+                            {
+                                // Write the Selected DCS LINEUP number to the DCS
+                                await _repository.SetWriteTagVal(intDCSLineupNum, "YES", lngLineupSelTID);
+                            }
+                            else
+                            {
+                                // IN BLEND ^1, COMP ^2, DCS LINEUP NUM IS NULL FOR LINEUP ^3.  CMD SEL/PRESEL IGNORED
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN96), programName, "BL-" + curblend.lngID, curblend.strName, strCompName,
+                                     strLineupName, "", "", "", res);
+                            }
+                        }
+
+                            if ((gstrDownloadType == "STATION"))
+                            {
+                                // get the eqp_order to donwload pumps corresponding stations
+                                intLineEqpOrder = (int)await _repository.GetCompEqpOrder(lngCompLineupID,lngStationId);
+                                                                
+                                // Get the component lineup pumps per station
+                                (lngPumpAId, lngPumpBId, lngPumpCId, lngPumpDId, intNumPumps)  = await GetStationPumps(lngCompLineupID,"COMPONENT",intLineEqpOrder,lngPumpAId,lngPumpBId,lngPumpCId,lngPumpDId,intNumPumps);
+                                intPmpIndex = 0;
+
+                                for (intPmpIndex = 0; intPmpIndex <= (intNumPumps - 1); intPmpIndex++)
+                                {
+                                    switch (intPmpIndex)
+                                    {
+                                        case 0:
+                                            lngPumpXSelTID = lngPumpASelTID;
+                                            lngPumpXId = lngPumpAId;
+                                            break;
+                                        case 1:
+                                            lngPumpXSelTID = lngPumpBSelTID;
+                                            lngPumpXId = lngPumpBId;
+                                            break;
+                                        case 2:
+                                            lngPumpXSelTID = lngPumpCSelTID;
+                                            lngPumpXId = lngPumpCId;
+                                            break;
+                                        case 3:
+                                            lngPumpXSelTID = lngPumpDSelTID;
+                                            lngPumpXId = lngPumpDId;
+                                            break;
+                                    }
+
+
+                                    AbcPumps PumpCfg = await _repository.GetPumpCfg(lngPumpXId);
+
+                                    strPumpName = string.IsNullOrEmpty(PumpCfg.Name) ? "-1" : PumpCfg.Name;
+                                    strModeTag = (PumpCfg.ModeTid == null) ? "-1" : PumpCfg.ModeTid.ToString();
+                                    strInServFlag = PumpCfg.InSerFlag;
+                                    intDcsPumpID = (PumpCfg.DcsPumpId == null) ? -1 : (int)PumpCfg.DcsPumpId;
+                                    blnSelect = true;
+                                    if ((strInServFlag != "YES"))
+                                    {
+                                        // warn msg "PUMP ^1 NOT IN ABC SERVICE OR NOT AUTO MODE.  COMMAND SELECTION IGNORED
+                                        await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN23), programName, "BL-" + curblend.lngID, strPumpName, "",
+                                        "", "\\", "", "", res);
+                                        blnSelect = false;
+                                    }
+
+                                    if (strModeTag != "-1")
+                                    {
+                                        AbcTags DataRes2 = await _repository.GetTagNameAndVal(Convert.ToDouble(strModeTag));
+                                        tag.vntTagName = DataRes2.Name;
+                                        tag.vntTagVal = DataRes2.ReadValue.ToString();
+                                        
+                                        if (tag.vntTagVal != ((int)OnOff.ON_).ToString())
+                                        {
+                                            // warn msg "PUMP ^1 NOT IN ABC SERVICE OR NOT AUTO MODE.  COMMAND SELECTION IGNORED
+                                            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN23), programName, "BL-" + curblend.lngID, strPumpName, "",
+                                            "", "\\", "", "", res);
+                                            blnSelect = false;
+                                        }
+
+                                    }
+
+                                    if ((blnSelect == true))
+                                    {
+                                        if (lngPumpXSelTID != -1 && intDcsPumpID != -1)
+                                        {
+                                            await _repository.SetWriteTagVal(intDcsPumpID, "YES", lngPumpXSelTID);                                            
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+                        goto lblNextStation;
+                        
+                    }
+                    lblNextTID: { }
+                }
+
+                //  get the tag value for this station
+                AbcTags DataRes = await _repository.GetTagNameAndVal(vntSelStationTIDAll);
+                tagSelStation.vntTagName = DataRes.Name;
+                tagSelStation.vntTagVal = DataRes.ReadValue.ToString();
+               
+                //  Reset this tag value if it is not reset yet
+                if (tagSelStation.vntTagVal != null && tagSelStation.vntTagVal != ((int)OnOff.OFF).ToString())
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", vntSelStationTIDAll);
+                }
+
+                if ((lngTankSelectNumTid != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngTankSelectNumTid);
+                }
+
+                if ((lngMatNumTid != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngMatNumTid);
+                }
+
+                if ((lngRcpSpTid != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngRcpSpTid);
+                }
+
+                if ((lngLineupSelTID != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngLineupSelTID);
+                }
+
+                if ((lngPumpASelTID != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngPumpASelTID);
+                }
+
+                if ((lngPumpBSelTID != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngPumpBSelTID);
+                }
+
+                if ((lngPumpCSelTID != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngPumpCSelTID);
+                }
+
+                if ((lngPumpDSelTID != -1))
+                {
+                    await _repository.SetWriteTagVal((int)OnOff.OFF, "YES", lngPumpDSelTID);
+                }
+
+                lblNextStation: { }
+            }
+
+            // get the blender_comps.lineup_sel_tid, blender_comps.lineup_presel_tid
+            lngLineupSelTID = -1;
+
+            List<AbcBlenderComps> AllBldrComps = await _repository.GetAllBldrComps(vntBldrsData[intBldrIdx].Id);
+            List<AbcBlenderComps> AllBldrCompsFlt = new List<AbcBlenderComps>();
+            if (AllBldrComps.Count() > 0)
+            {
+                AllBldrCompsFlt = AllBldrComps.Where<AbcBlenderComps>(row => row.MatId == lngMatId).ToList();
+                
+                if (AllBldrCompsFlt.Count() > 0)
+                {
+                    lngLineupSelTID = (AllBldrCompsFlt[0].LineupSelTid == null) ? -1 : (double)AllBldrCompsFlt[0].LineupSelTid;
+                }
+
+            }
+            
+            // Download lineup indexes to DCS using the blender comps interface
+            if (lngLineupSelTID != -1)
+            {
+                // get DCS Lineup index if selected lineup id is not null
+                intDCSLineupNum = -1;
+                if (lngCompLineupID != -1)
+                {
+                    AbcCompLineups DCSCompLineupNum = await _repository.GetDCSCompLineupNum(lngCompLineupID);
+                    intDCSLineupNum = (int)DCSCompLineupNum.DcsLineupNum;
+                    strLineupName = DCSCompLineupNum.Name;
+                }
+
+                if (intDCSLineupNum != -1)
+                {
+                    // Write the Selected DCS LINEUP number to the DCS
+                    await _repository.SetWriteTagVal(intDCSLineupNum, "YES", lngLineupSelTID);
+                }
+                else
+                {
+                    // get the comp name
+                    strCompName = await _repository.GetCompName(lngMatId);
+
+                    // IN BLEND ^1, COMP ^2, DCS LINEUP NUM IS NULL FOR LINEUP ^3.  CMD SEL/PRESEL IGNORED
+                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN96), programName, "BL-" + curblend.lngID, curblend.strName, strCompName,
+                                            strLineupName, "", "", "", res);
+                }
+            }
+
+            return 0;
+        }
         private async Task<int> SwingProdTank(int intBldrIdx, List<AbcBlenders> vntBldrsData, CurBlendData curblend, int intDestTankID, DebugLevels enumDebugLevel)
         {
             string strSwingState;
@@ -6773,7 +8276,7 @@ namespace BlendMonitor.Service
                                     else
                                     {
                                         //  skip until this point is swing is related to line_flush_tk
-                                        //                    If curblend.strState = "PAUSED" Then .  Commented out JO: Feb, 03
+                                        //                    If curblend.strState = "PAUSED" Then .  Commented out 
                                         // Get the abc_blender_dest.selection_tid for the to_tank_id
                                         List<AbcBlenderDest> BldrDestPreselTID = await _repository.GetBldrDestPreselTID(vntBldrsData[intBldrIdx].Id,curblend.lngID,lngToTankID.ToString());
                                         lngSelTID = (BldrDestPreselTID[0].SelectionTid == null)? -1 : Convert.ToDouble(BldrDestPreselTID[0].SelectionTid);
@@ -7068,7 +8571,7 @@ namespace BlendMonitor.Service
 
                                             }
 
-                                            // JO: Feb, 03: Download Lineup sel indexes to DCS
+                                            // Download Lineup sel indexes to DCS
                                             if ((lngLineupSelTID != -1))
                                             {
                                                 // get DCS Lineup index if selected lineup id is not null
@@ -7348,13 +8851,510 @@ namespace BlendMonitor.Service
                                     //  = OUT_SERV
                                 }
 
-                                // For active/paused blends
-                                if (curblend.strState.Trim() == "ACTIVE" || curblend.strState.Trim() == "PAUSED")
+                            // For active/paused blends
+                            if (curblend.strState.Trim() == "ACTIVE" || curblend.strState.Trim() == "PAUSED")
+                            {
+                                //' Get the swing Criteria in abc_blend_swings
+                                strCriteriaName = (BlendSwingsDataObj.CriteriaName == null) ? "" : BlendSwingsDataObj.CriteriaName;
+                                switch (strCriteriaName)
                                 {
+                                    case "NOW":
+                                        if ((strAutoSwingFlag == "YES"))
+                                        {
+                                            // Issue the swing command
+                                            if ((gProjDfs.strAllowStartStop == "YES"))
+                                            {
+                                                //  Set Write value=1 for the swing tid
+                                                await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSwingTID);
+                                                
+                                                // set pending state to SWINGING
+                                                curblend.vntPendSt = "SWINGING";
+                                                await _repository.SetPendingState(curblend.vntPendSt,curblend.lngID);
+                                                //  update blend swings table to hold the active swing state
+                                                await _repository.SetBlendSwingData2("ACTIVE", curblend.lngID, lngDestTkId, lngToTankID);
 
+                                                gDteCurTime = await _repository.GetCurTime();
+                                                
+                                                //  set the Swing Command Time to a global variable
+                                                gDteProdSwgCmdTime[intBldrIdx] = gDteCurTime;
+                                            }
+                                            else
+                                            {
+                                                // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                    "", "", "", res);
+                                            }
+
+                                        }
+                                        else if ((gstrRundnFlag != "YES"))
+                                        {
+                                            //  Issue the Pause command
+                                            if ((gProjDfs.strAllowStartStop == "YES"))
+                                            {
+                                                if ((curblend.strState.Trim() != "PAUSED"))
+                                                {
+                                                    // set pending state to PAUSING
+                                                    curblend.vntPendSt = "PAUSING";
+
+                                                    //  update blend swings table to hold the active swing state
+                                                    await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+
+                                                    // save the bookmark to recover the rs position after command download
+                                                    //List<AbcBlendDest> DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+                                                    //List<AbcBlendDest> DestTkFlagsFlt = new List<AbcBlendDest>();
+
+                                                    // call PAUSE_BLEND function
+                                                    await ProcessBldCmd(BlendCmds.PAUSE, intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+                                                    
+                                                    DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+
+                                                }
+
+                                                // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                   "", "", "", res);
+                                            }
+                                            else
+                                            {
+                                                // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                   "", "", "", res);
+                                                // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                  "", "", "", res);
+                                            }
+
+                                        }
+                                        break;
+                                    case "TANK VOLUME":
+                                        // Get the data from the from tank id
+                                        List<ASTankID> ASTankIDdata = await _repository.GetASTankID((int)lngDestTkId);
+                                        
+                                        dblMinvol = (ASTankIDdata[0].MinVol == null)?0: (double)ASTankIDdata[0].MinVol;
+                                        dblAvailVol = (ASTankIDdata[0].AvailVol == null)?0:(double)ASTankIDdata[0].AvailVol;
+                                        
+                                        // Compare the criteria_num_lmt with current vol in the tank
+                                        if ((dblCriteriaNumberLmt <= (dblAvailVol + dblMinvol)))
+                                        {
+                                            if ((strAutoSwingFlag == "YES"))
+                                            {
+                                                //  Issue the swing command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSwingTID);
+
+                                                    // set pending state to SWINGING
+                                                    curblend.vntPendSt = "SWINGING";
+                                                    await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+                                                    //  update blend swings table to hold the active swing state
+                                                    await _repository.SetBlendSwingData2("ACTIVE", curblend.lngID, lngDestTkId, lngToTankID);
+
+                                                    gDteCurTime = await _repository.GetCurTime();
+
+                                                    //  set the Swing Command Time to a global variable
+                                                    gDteProdSwgCmdTime[intBldrIdx] = gDteCurTime;
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                        "", "", "", res);
+                                                }
+
+                                            }
+                                            else if ((gstrRundnFlag != "YES"))
+                                            {
+                                                //  Issue the Paused command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    if ((curblend.strState.Trim() != "PAUSED"))
+                                                    {
+                                                        curblend.vntPendSt = "PAUSING";
+
+                                                        //  update blend swings table to hold the active swing state
+                                                        await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+
+                                                        // save the bookmark to recover the rs position after command download
+                                                        //List<AbcBlendDest> DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+                                                        //List<AbcBlendDest> DestTkFlagsFlt = new List<AbcBlendDest>();
+
+                                                        // call PAUSE_BLEND function
+                                                        await ProcessBldCmd(BlendCmds.PAUSE, intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+
+                                                        DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+
+                                                    }
+
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                    "", "", "", res);                                                    
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                      "", "", "", res);
+                                                }
+
+                                            }
+
+                                        }
+                                        break;
+                                    case "BLEND VOLUME":
+                                        // Download swing_target_vol and swing_exist tags values to DCS
+                                        if (((strFlushTkFlag == "YES") && (blnFlushing == true)))
+                                        {                                            
+                                            if (vntBldrsData[intBldrIdx].SwingVolTid != null)
+                                            {
+                                                // Turn ON the swing exist flag in DCS
+                                                if (vntBldrsData[intBldrIdx].SwingExistTid != null)
+                                                {
+                                                    await _repository.SetWriteTagVal((int)YesNo.YES, "YES", vntBldrsData[intBldrIdx].SwingExistTid);
+                                                }
+
+                                                // Download the swing target volume in DCS
+                                                await _repository.SetWriteTagVal((int)dblCriteriaNumberLmt, "YES", vntBldrsData[intBldrIdx].SwingVolTid);                                                
+                                            }
+
+                                        }
+                                        else if (((strTkInUseFlag == "YES") && (blnFlushing == false)))
+                                        {                                            
+                                            if (vntBldrsData[intBldrIdx].SwingVolTid != null)
+                                            {
+                                                // Turn ON the swing exist flag in DCS
+                                                if (vntBldrsData[intBldrIdx].SwingExistTid != null)
+                                                {
+                                                    await _repository.SetWriteTagVal((int)YesNo.YES, "YES", vntBldrsData[intBldrIdx].SwingExistTid);
+                                                }
+
+                                                // Download the swing target volume in DCS
+                                                await _repository.SetWriteTagVal((int)dblCriteriaNumberLmt, "YES", vntBldrsData[intBldrIdx].SwingVolTid);
+                                            }
+                                        }
+
+                                        // Compare the criteria_num_lmt with current vol in the tank
+                                        if (curblend.sngCurVol >= dblCriteriaNumberLmt)
+                                        {
+                                            if ((strAutoSwingFlag == "YES"))
+                                            {
+                                                //  Issue the swing command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSwingTID);
+
+                                                    // set pending state to SWINGING
+                                                    curblend.vntPendSt = "SWINGING";
+                                                    await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+                                                    //  update blend swings table to hold the active swing state
+                                                    await _repository.SetBlendSwingData2("ACTIVE", curblend.lngID, lngDestTkId, lngToTankID);
+
+                                                    gDteCurTime = await _repository.GetCurTime();
+
+                                                    //  set the Swing Command Time to a global variable
+                                                    gDteProdSwgCmdTime[intBldrIdx] = gDteCurTime;
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                        "", "", "", res);
+                                                }
+
+                                            }
+                                            else if ((gstrRundnFlag != "YES"))
+                                            {
+                                                //  Issue the Paused command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    if ((curblend.strState.Trim() != "PAUSED"))
+                                                    {
+                                                        curblend.vntPendSt = "PAUSING";
+
+                                                        //  update blend swings table to hold the active swing state
+                                                        await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+
+                                                        // save the bookmark to recover the rs position after command download
+                                                        //List<AbcBlendDest> DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+                                                        //List<AbcBlendDest> DestTkFlagsFlt = new List<AbcBlendDest>();
+
+                                                        // call PAUSE_BLEND function
+                                                        await ProcessBldCmd(BlendCmds.PAUSE, intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+
+                                                        DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+
+                                                    }
+
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                    "", "", "", res);
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                      "", "", "", res);
+                                                }
+
+                                            }
+
+                                        }
+                                        break;
+                                    case "SWING TIME":
+                                        gDteCurTime = await _repository.GetCurTime();
+                                        // Compare the criteria_num_lmt with current vol in the tank
+                                        if (gDteCurTime >= dteCriteriaTimeLmt)
+                                        {
+                                            if ((strAutoSwingFlag == "YES"))
+                                            {
+                                                //  Issue the swing command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSwingTID);
+
+                                                    // set pending state to SWINGING
+                                                    curblend.vntPendSt = "SWINGING";
+                                                    await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+                                                    //  update blend swings table to hold the active swing state
+                                                    await _repository.SetBlendSwingData2("ACTIVE", curblend.lngID, lngDestTkId, lngToTankID);
+
+                                                    gDteCurTime = await _repository.GetCurTime();
+
+                                                    //  set the Swing Command Time to a global variable
+                                                    gDteProdSwgCmdTime[intBldrIdx] = gDteCurTime;
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                        "", "", "", res);
+                                                }
+
+                                            }
+                                            else if ((gstrRundnFlag != "YES"))
+                                            {
+                                                //  Issue the Paused command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    if ((curblend.strState.Trim() != "PAUSED"))
+                                                    {
+                                                        curblend.vntPendSt = "PAUSING";
+
+                                                        //  update blend swings table to hold the active swing state
+                                                        await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+
+                                                        // save the bookmark to recover the rs position after command download
+                                                        //List<AbcBlendDest> DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+                                                        //List<AbcBlendDest> DestTkFlagsFlt = new List<AbcBlendDest>();
+
+                                                        // call PAUSE_BLEND function
+                                                        await ProcessBldCmd(BlendCmds.PAUSE, intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+
+                                                        DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+
+                                                    }
+
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                    "", "", "", res);
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                      "", "", "", res);
+                                                }
+
+                                            }
+
+                                        }
+                                        break;
+                                    case "HIGH LIMIT":
+                                        //'Get the data from the from tank id
+                                        List<ASTankID> ASTankIDData = await _repository.GetASTankID((int)lngDestTkId);
+
+                                        dblMinvol = (ASTankIDData[0].MinVol == null) ? 0 : (double)ASTankIDData[0].MinVol;
+                                        dblMaxVol = (ASTankIDData[0].MaxVol == null) ? 0 : (double)ASTankIDData[0].MaxVol;
+                                        dblAvailVol = (ASTankIDData[0].AvailVol == null) ? 0 : (double)ASTankIDData[0].AvailVol;
+                                        
+                                        // Compare the Max vol with current vol in the tank
+                                        if ((dblAvailVol + dblMinvol) >= dblMaxVol)
+                                        {
+                                            if ((strAutoSwingFlag == "YES"))
+                                            {
+                                                //  Issue the swing command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSwingTID);
+
+                                                    // set pending state to SWINGING
+                                                    curblend.vntPendSt = "SWINGING";
+                                                    await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+                                                    //  update blend swings table to hold the active swing state
+                                                    await _repository.SetBlendSwingData2("ACTIVE", curblend.lngID, lngDestTkId, lngToTankID);
+
+                                                    gDteCurTime = await _repository.GetCurTime();
+
+                                                    //  set the Swing Command Time to a global variable
+                                                    gDteProdSwgCmdTime[intBldrIdx] = gDteCurTime;
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                        "", "", "", res);
+                                                }
+
+                                            }
+                                            else if ((gstrRundnFlag != "YES"))
+                                            {
+                                                //  Issue the Paused command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    if ((curblend.strState.Trim() != "PAUSED"))
+                                                    {
+                                                        curblend.vntPendSt = "PAUSING";
+
+                                                        //  update blend swings table to hold the active swing state
+                                                        await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+
+                                                        // save the bookmark to recover the rs position after command download
+                                                        //List<AbcBlendDest> DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+                                                        //List<AbcBlendDest> DestTkFlagsFlt = new List<AbcBlendDest>();
+
+                                                        // call PAUSE_BLEND function
+                                                        await ProcessBldCmd(BlendCmds.PAUSE, intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+
+                                                        DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+
+                                                    }
+
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                    "", "", "", res);
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                      "", "", "", res);
+                                                }
+
+                                            }
+
+                                        }
+                                        break;
+                                    case "LOW LIMIT":
+                                        //'Get the data from the from tank id
+                                        List<ASTankID> ASTankIDData2 = await _repository.GetASTankID((int)lngDestTkId);
+
+                                        dblMinvol = (ASTankIDData2[0].MinVol == null) ? 0 : (double)ASTankIDData2[0].MinVol;
+                                        dblMaxVol = (ASTankIDData2[0].MaxVol == null) ? 0 : (double)ASTankIDData2[0].MaxVol;
+                                        dblAvailVol = (ASTankIDData2[0].AvailVol == null) ? 0 : (double)ASTankIDData2[0].AvailVol;
+
+                                        // Compare the Max vol with current vol in the tank
+                                        if ((dblAvailVol + dblMinvol) <= dblMinvol)
+                                        {
+                                            if ((strAutoSwingFlag == "YES"))
+                                            {
+                                                //  Issue the swing command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    await _repository.SetWriteTagVal((int)OnOff.ON_, "YES", lngSwingTID);
+
+                                                    // set pending state to SWINGING
+                                                    curblend.vntPendSt = "SWINGING";
+                                                    await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+                                                    //  update blend swings table to hold the active swing state
+                                                    await _repository.SetBlendSwingData2("ACTIVE", curblend.lngID, lngDestTkId, lngToTankID);
+
+                                                    gDteCurTime = await _repository.GetCurTime();
+
+                                                    //  set the Swing Command Time to a global variable
+                                                    gDteProdSwgCmdTime[intBldrIdx] = gDteCurTime;
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                        "", "", "", res);
+                                                }
+
+                                            }
+                                            else if ((gstrRundnFlag != "YES"))
+                                            {
+                                                //  Issue the Paused command
+                                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                                {
+                                                    if ((curblend.strState.Trim() != "PAUSED"))
+                                                    {
+                                                        curblend.vntPendSt = "PAUSING";
+
+                                                        //  update blend swings table to hold the active swing state
+                                                        await _repository.SetPendingState(curblend.vntPendSt, curblend.lngID);
+
+                                                        // save the bookmark to recover the rs position after command download
+                                                        //List<AbcBlendDest> DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+                                                        //List<AbcBlendDest> DestTkFlagsFlt = new List<AbcBlendDest>();
+
+                                                        // call PAUSE_BLEND function
+                                                        await ProcessBldCmd(BlendCmds.PAUSE, intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+
+                                                        DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
+
+                                                    }
+
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                    "", "", "", res);
+                                                }
+                                                else
+                                                {
+                                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "SWING", gstrBldrName, "",
+                                                    "", "", "", res);
+                                                    // SWING CRITERIA IS MET ON BLEND ^1. AUTO SWING FLAG OR ALLOW_START_STOP FLAG ARE OFF. PERFORM SWING IN DCS
+                                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN76), programName, "BL-" + curblend.lngID, curblend.strName, "", "",
+                                                      "", "", "", res);
+                                                }
+
+                                            }
+
+                                        }
+                                        break;
                                 }
-
                             }
+
+                        }
                         NEXT_SWING: { }
                         }
                     }
@@ -7362,7 +9362,6 @@ namespace BlendMonitor.Service
                 
             }
             return 0;
-
         }
         private async Task<int> MonitorBlend(int intBldrIdx, List<AbcBlenders> vntBldrsData, CurBlendData curblend, int intDestTankID, DebugLevels enumDebugLevel)
         {
@@ -7445,7 +9444,7 @@ namespace BlendMonitor.Service
             }
 
 
-            // JO - Oct. 07, 2004: get the last interval if the blend monitor just started
+            // get the last interval if the blend monitor just started
             if ((gArPrevBldData[intBldrIdx].intCurIntv == 0))
             {
                 List<AbcBlendIntervals> BlendIntvs = await _repository.GetBlendIntvs(curblend.lngID);
@@ -7489,7 +9488,7 @@ namespace BlendMonitor.Service
                 // THIS CODE WAS MOVED TO shared (ChkNewIntvlCreation)
                 // The cmd update was improve to update all props at once, intead
                 // of looping one by one
-                // JO - Aug, 03: modified this update statement to update the biascalc_current field along with
+                // modified this update statement to update the biascalc_current field along with
                 // the interval bias.  Dec. 03: update unfiltered_bias=Bias from prev interval
                 await _repository.CopyPrevBias(gArPrevBldData[intBldrIdx].intCurIntv, gArPrevBldData[intBldrIdx].intCurIntv, gArPrevBldData[intBldrIdx].intCurIntv,
                 curblend.lngID, curblend.intCurIntv);
@@ -7526,7 +9525,7 @@ namespace BlendMonitor.Service
                     curblend.sngTgtVol.ToString(), "", "", "", res);
             }
 
-            // JO - Mar. 17, 04:  Download the comment in case it has been changed
+            //   Download the comment in case it has been changed
             // Concatenate the Product name and Grade and download comment
 
             if (((tagPermissive.vntTagVal == null) ? (int)OnOff.OFF : Convert.ToInt32(tagPermissive.vntTagVal)) == (int)OnOff.ON_)
@@ -7559,18 +9558,14 @@ namespace BlendMonitor.Service
             //  the difference between scan times in the totalyzers tags
             if (((gintSkipCycleBmon[intBldrIdx] == 0) || (gintSkipCycleBmon[intBldrIdx] == 2)))
             {
-                // JAIME: call Prod TANK_SWING function
-                
-                // PENDING
-                //SwingProdTank(intBldrIdx, vntBldrsData, curblend, intDestTankID, enumDebugLevel);
+                //  call Prod TANK_SWING function                
+                await SwingProdTank(intBldrIdx, vntBldrsData, curblend, intDestTankID, enumDebugLevel);
                 // Skip comp Tank swing if the pending state is not null and blend state is DONE
                 // RW 31-Jul-14 PreemL PQL-79
                 // If IsNull(curblend.vntPendSt) And Trim(curblend.strState) <> "DONE" Then
                 if ((((curblend.vntPendSt == null) || (curblend.vntPendSt == "SWINGING")) && (curblend.strState.Trim() != "DONE")))
                 {
-                    // RW 31-Jul-14 PreemL PQL-79
-                    // PENDING
-                   // SwingCompTank(intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
+                   await SwingCompTank(intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
                 }
 
                 // Nov 07/2001: Relocated this function to be after Prod Swing checking
@@ -7586,7 +9581,7 @@ namespace BlendMonitor.Service
             }
 
             // *******
-            if (((curblend.vntPendSt.Trim() == "OPTIMIZING") && (curblend.strState.Trim() != "DONE")))
+            if (((curblend.vntPendSt == "OPTIMIZING") && (curblend.strState.Trim() != "DONE")))
             {
                 // get last_run_time of OPTIM MONITOR
                 //     ABCdataEnv.cmdGetLastRunTime "ABC OPTIMIZE MONITOR", dteOpmonTime
@@ -7710,7 +9705,7 @@ namespace BlendMonitor.Service
                 }
 
                 // set IN_USE_FLAG to NO for all stations used by the comp lineup
-                // JO- Feb 28, 04: there is not need to set station_in_used flag to NO.
+                //  there is not need to set station_in_used flag to NO.
                 //       ABCdataEnv.cmdsetStationinuseFlg "NO", intLnupID
                 // -------------------- Code below added for SRTF RW 22/10/2010 --------------------------'
                 //  Get the stations used by this lineup
@@ -7752,7 +9747,7 @@ namespace BlendMonitor.Service
             }
 
             // -------------------- End of code added RW 22/10/2010 --------------------------'
-            //  JAIME: call to set the stoptime fo the last interval
+            //   call to set the stoptime fo the last interval
             await SetStopTimeInt(curblend.lngID);
             // generate blend report
             // temporary setting to prevent generation of blend report - Partha 7/24/00
@@ -7941,7 +9936,7 @@ namespace BlendMonitor.Service
                 {
                     // Set swing tags write tags values to OFF
                     // Set the product swing cmds (blender.swing_tid) to OFF (Write Value)
-                    // JO - Aug, 03: Replace this update by the new created sub SetSwingTIDOFF
+                    //  - Aug, 03: Replace this update by the new created sub SetSwingTIDOFF
                     await SetSwingTIDOFF(Convert.ToInt32(vntBldrsData[intBldrIdx].PrdgrpId), vntBldrsData[intBldrIdx].SwingTid, Convert.ToInt32(vntBldrsData[intBldrIdx].Id));
                     gblnBmonStarted[intBldrIdx] = false;
                 }
@@ -8195,10 +10190,10 @@ namespace BlendMonitor.Service
                                     return 0;
                                 }
 
-                                // Jaime *** added only write on change code  *** June 26/01
+                                //  *** added only write on change code  ***
                                 if ((gProjDfs.strAllowRateVolUpds == "YES"))
                                 {
-                                    // JO - feb 28, 04: get download OK tag (permissive tag) value from ABC_TAGS
+                                    // get download OK tag (permissive tag) value from ABC_TAGS
                                     AbcTags DataRes = await _repository.GetTagNameAndVal(vntBldrsData[intBldrIdx].DownloadOkTid);
                                     tagPermissive.vntTagName = DataRes.Name;
                                     tagPermissive.vntTagVal = DataRes.ReadValue.ToString();
@@ -8235,13 +10230,13 @@ namespace BlendMonitor.Service
                             else
                             {
                                 // process samples if needed in PAUSED state
-                                // JO - May 04: update also current interval
+                                // update also current interval
                                 gArPrevBldData[intBldrIdx].intCurIntv = curblend.intCurIntv;
                                 if ((gProjDfs.strAllowSCSampling == "YES"))
                                 {
                                     // Process samples if needed in ACTIVE or PAUSED states
                                     intSampleResult = await ProcessSamples(intBldrIdx, vntBldrsData, curblend, enumDebugLevel);
-                                    // JO - Sep, 03: Set tqi_now_flag to "YES" right after LINEPROP because of the sampling or regular LINEPROP
+                                    //  Set tqi_now_flag to "YES" right after LINEPROP because of the sampling or regular LINEPROP
                                     // Jan. 03,03: Set the TQI_NOW_FLAG=YES
                                     if ((vntBldrsData[intBldrIdx].CalcpropFlag == "YES") && (intSampleResult == RetStatus.SUCCESS))
                                     {
@@ -8253,14 +10248,13 @@ namespace BlendMonitor.Service
                             }
                         }
 
-                        //call Prod TANK_SWING function
-                        //PENDING
-                       // SwingProdTank(intBldrIdx, vntBldrsData, curblend, intDestTankID, enumDebugLevel);
+                        //call Prod TANK_SWING function                        
+                        await SwingProdTank(intBldrIdx, vntBldrsData, curblend, intDestTankID, enumDebugLevel);
 
                         //'Skip comp Tank swing if the pending state is not null and blend state is DONE
                         if (curblend.vntPendSt == null && curblend.strState.Trim() != "DONE") {
-                            //PENDING
-                            //SwingCompTank(intBldrIdx, vntBldrsData, curblend, enumDebugLevel);         
+                            
+                            await SwingCompTank(intBldrIdx, vntBldrsData, curblend, enumDebugLevel);         
                         }
                     } // 'Skip the previous calc if this blend has never started
                 }
@@ -8973,7 +10967,7 @@ namespace BlendMonitor.Service
             string strTankState ="";
             // TODO: On Error GoTo Warning!!!: The statement is not translatable 
             InservOutserv rtnData = InservOutserv.OUT_SERV;
-            //  JAIME: To skip DCS in service if source_destn_type<>"TANK"
+            //   To skip DCS in service if source_destn_type<>"TANK"
             if (vntDcsServTid != null)
             {
                 // get DCS_service_tid tag value
@@ -10038,7 +12032,7 @@ namespace BlendMonitor.Service
 
             // check if dest tank is in service in both DCS and ABC
             DestTank.strFixHeelFlg =  await _repository.GetDestTankData(curblend.lngID,DestTank.intID,DestTank.vntHeelVol);
-            // Jaime:If there is a flush tank then change the dest tank in use for the
+            // If there is a flush tank then change the dest tank in use for the
             // tank with abc_dest_tanks.flush_tk_flag="YES"
             // If the in_use_flag=Flush_tk_flag then no change is needed
             List<AbcBlendDest> DestTkFlags = await _repository.GetDestTkFlags(curblend.lngID);
@@ -10463,7 +12457,7 @@ namespace BlendMonitor.Service
 
                         }
 
-                        // JO:  Skip this calculation if there are not pumps preconfigured for the lineup id
+                        //   Skip this calculation if there are not pumps preconfigured for the lineup id
                         if (vntPumpsData[intJ].InSerFlag != null)
                         {
                             if (vntPumpsData[intJ].InSerFlag != "YES")
@@ -11182,7 +13176,7 @@ namespace BlendMonitor.Service
 
                 }
 
-                // JO: Feb. 17, 03: Download pumps based on lineup ID
+                //  Download pumps based on lineup ID
                 if ((gstrDownloadType == "STATION"))
                 {
                     if ((lngCompLineupID != -1))
@@ -11779,15 +13773,13 @@ namespace BlendMonitor.Service
                 }
                 else
                 {
-                    // JO: Feb. 17, 03: Download pumps based on com lineup id
+                    //  Download pumps based on com lineup id
 
                     // --- validate parama
                     if (await DownloadLineupCompPmps(intI, vntBldrsData, curblend, lngCompLineupID, enumDebugLevel) == RetStatus.FAILURE)
                     {
-                        // JO: June 12, 06: close rs before exiting the function
-                        await FinishBlend(Convert.ToInt32(vntBldrsData[intBldrIdx].Id), curblend, DestTank.intID, enumDebugLevel);
-
-                        // TODO: Exit Function: Warning!!! Need to return the value
+                        // close rs before exiting the function
+                        await FinishBlend(Convert.ToInt32(vntBldrsData[intBldrIdx].Id), curblend, DestTank.intID, enumDebugLevel);                       
                         return rtnData;
                     }
                 }
@@ -12207,7 +14199,7 @@ namespace BlendMonitor.Service
             await _repository.SetWriteTagVal(Convert.ToInt32(curblend.sngTgtVol),"YES", vntBldrsData[intBldrIdx].TargVolTid);
             //Added to concatenate the Product name and Grade and download descr
             await _repository.SetWriteStrTagVal(strPrdName, vntBldrsData[intBldrIdx].ProductTid);
-            // JO - Mar. 17, 04: write the grade_tid is not null, then download the description alone
+            //  write the grade_tid is not null, then download the description alone
             if (vntBldrsData[intBldrIdx].GradeTid != null)
             {
                 await _repository.SetWriteStrTagVal(strGrdName, vntBldrsData[intBldrIdx].GradeTid);
@@ -12303,7 +14295,7 @@ namespace BlendMonitor.Service
                 //Update heel volume of in used dest tank
                 if (strTkInUseFlag == "YES")
                 {
-                    //KA/EG/JO - get the update_heel_flag from abc_blends to decide whether or not
+                    // get the update_heel_flag from abc_blends to decide whether or not
                     //'the heel_vol should be updated
 
                     List<AbcBlends> BlendState = await _repository.GetBlendState(curblend.lngID);
@@ -12455,7 +14447,7 @@ namespace BlendMonitor.Service
                         await _repository.SetWriteTagVal((int)YesNo.YES, "YES", lngBldrDestPreselTkTid);                        
                     }
 
-                    // JO: FEB, 03: Preselect a tank in the DCS
+                    // Preselect a tank in the DCS
                     if (lngTankPreselTID != -1)
                     {                       
                         // Get DCS Tank Num for this tank
@@ -12543,7 +14535,7 @@ namespace BlendMonitor.Service
 
                     if ((gstrDownloadType != "LINEUP"))
                     {
-                        // JO: Get and set the product lineups pumps
+                        //  Get and set the product lineups pumps
                         // get pump data, including inuse_tag_id for the product
                         if ((intNDestTks == 1) || (strFlushTkFlag == "YES" && strTkInUseFlag == "YES") ||
                             (intNDestTks > 1 && strTkInUseFlag == "NO" && strFlushTkFlag == "YES") || 
@@ -12577,7 +14569,7 @@ namespace BlendMonitor.Service
                                     strInServFlag = ProdPumpObj.InSerFlag;
                                     intDcsPumpID = (ProdPumpObj.DcsPumpId == null) ? -1 : Convert.ToInt32(ProdPumpObj.DcsPumpId);
                                     strInUsePmpId = (ProdPumpObj.InuseTagId == null) ? "-1" : ProdPumpObj.InuseTagId.ToString();
-                                    // JO: Skip this calculation if there are not pumps preconfigured for the lineup id
+                                    // Skip this calculation if there are not pumps preconfigured for the lineup id
                                     if ((strInServFlag != "YES"))
                                     {
                                         // warn msg "PUMP ^1 NOT LISTED IN SERVICE IN ABC OR NOT IN AUTO MODE IN DCS.  DOWNLOADING CANCELED
@@ -12724,13 +14716,14 @@ namespace BlendMonitor.Service
             return 0;
         
         }
-        public async void ProcessBlenders()
+        public async Task<int> ProcessBlenders()
         {
             string strDebugFlag; //'debug flag string ("YES" or "NO")
             bool blnArraysSet = false;
             double lngBldActiveID = 0;
             DebugLevels enumDebugLevel = 0, enumBldrDbgLevel = 0;//'integer value of debug level for low, medium and high
             string strBldrDbgFlag = "";
+            string strBlendState = "";
             DcsTag tagRbcMode = new DcsTag();
             List<AbcBlenders> vntBldrsData = new List<AbcBlenders>();
             int intNBldrs = 0, intNBlds = 0, intNActiveBlds = 0, intI = 0, intJ = 0;
@@ -12739,6 +14732,8 @@ namespace BlendMonitor.Service
             strDebugFlag = Data.DebugFlag;
             enumDebugLevel = (DebugLevels)Convert.ToInt32(Data.DebugLevel);
             DateTime gDteCurTime = DateTime.Now;
+            string vntOptRunState = "";
+            string res = "";
             if (Data.EnabledFlag.ToUpper() == "YES")
             {
                 Console.WriteLine("enabled");
@@ -12746,7 +14741,7 @@ namespace BlendMonitor.Service
                 await _repository.SetStartTime();
                 if (enumDebugLevel == DebugLevels.High)
                 {
-                    var res = "";
+                   
                     //await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG4), programName, cstrDebug, "", "PROCESS_BLENDERS", "", "", "", "", res);
                     //  intNBldrs = ABCdataEnv.rscmdGetBlendersData.RecordCount
                 }
@@ -12766,7 +14761,7 @@ namespace BlendMonitor.Service
                     gblnProdSwgTimeIn = new bool[intNBldrs];
                     gblnCompSwgTimeIn = new bool[intNBldrs];
                     gblnBmonStarted = new bool[intNBldrs];
-                    // '       'JO - Aug, 03: This intVar allows recalc of LINEPROP after CalcBias all the way to first interval
+                    // '       ' This intVar allows recalc of LINEPROP after CalcBias all the way to first interval
                     //'       gint1stSampleBias = new int[intNBldrs - 1];
                     //       'First member is for blend id, second is for target vol/target vol/Transfer Vol
 
@@ -12777,7 +14772,7 @@ namespace BlendMonitor.Service
                     // initialize variables per blender
                     for (intI = 0; (intI < intNBldrs); intI++)
                     {
-                        // JO - Sep, 03: LINEPROP at the middle of the interval has been suppressed.
+                        //  LINEPROP at the middle of the interval has been suppressed.
                         // Variable to calc the component volumes in the middle of an interval
                         // gIntProcLineProp(intI) = 1
                         // Initializing flag to skip a cycle in the Bmon if Vol Tags
@@ -12813,7 +14808,7 @@ namespace BlendMonitor.Service
                     gintNameCount = new int[intNBldrs]; //counter of retries when ABC<>RBC name
                     gblnSetOptNowFlag = new bool[intNBldrs]; //This flag sets the TQI_NOW_FLAG='YES' when the BMON starts (1st Time]
                     gblnPrevStatePaused = new bool[intNBldrs];//create new intervals only two cycles of Bmon after paused state
-                                                              // '      gint1stSampleBias[intNBldrs - 1] 'JO - Aug, 03: This intVar allows recalc of LINEPROP after CalcBias all the way to first interval
+                                                              // '      gint1stSampleBias[intNBldrs - 1]  This intVar allows recalc of LINEPROP after CalcBias all the way to first interval
 
                     for (int i = 0; i < intNBldrs; i++)
                     {
@@ -12839,8 +14834,7 @@ namespace BlendMonitor.Service
                 if (gProjDfs.vntRcpTolr == null)
                 {
                     Console.WriteLine("recipe tolerance is null, taken as 1.0");
-                    //'warn msg "Null default recipe tolerance, taken as 1.0"
-                    var res = "";
+                    //'warn msg "Null default recipe tolerance, taken as 1.0"                    
                     await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN1), programName, cstrGen, "", "", "", "''", "", "", res);
                     gProjDfs.vntRcpTolr = 1;
                 }
@@ -12886,8 +14880,7 @@ namespace BlendMonitor.Service
                     gDteCurTime = DateTime.Now;
                     Console.WriteLine("log start time of the first blender header to messages");
                     if (enumDebugLevel == DebugLevels.High)
-                    {
-                        var res = "";
+                    {                        
                         await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG1), programName, cstrDebug, gDteCurTime.ToString(), "", "", "", "", "", res);
                     }
 
@@ -12905,8 +14898,7 @@ namespace BlendMonitor.Service
                     Console.WriteLine("if more than 1 blends found for blender then move to next blend - blends found - count - " + intNBlds);
                     if (intNBlds > 1)
                     {
-                        // 'warning msg "More than one ^1 blends found on blender ^1. ^2 Action has been Canceled"           
-                        var res = "";
+                        // 'warning msg "More than one ^1 blends found on blender ^1. ^2 Action has been Canceled"                                   
                         await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN2), programName, cstrGen, "ACTIVE", gstrBldrName, "PROCESSING", "", "", "", res);
                         NextBlend();
                         Console.WriteLine("Move to next blend");
@@ -12964,8 +14956,7 @@ namespace BlendMonitor.Service
                             if (intNBlds > 1)
                             {
                                 Console.WriteLine("More than one ^1 blends found on blender - log to message");
-                                //'warning msg "More than one ^1 blends found on blender ^2. ^3 action has been Canceled"                                
-                                var res = "";
+                                //'warning msg "More than one ^1 blends found on blender ^2. ^3 action has been Canceled"                                                                
                                 await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN2), programName, cstrGen, "READY", gstrBldrName, "DOWNLOADING", "", "", "", res);
 
                                 Console.WriteLine("set ABC_BLENDS.PENDING_STATE to null for all");
@@ -13003,8 +14994,7 @@ namespace BlendMonitor.Service
 
                                 if (intNActiveBlds >= 1)
                                 {
-                                    //'warning msg "More than one ^1 blends found on blender ^2. ^3 action has been Canceled"                             
-                                    var res = "";
+                                    //'warning msg "More than one ^1 blends found on blender ^2. ^3 action has been Canceled"                                    
                                     await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN2), programName, cstrGen, "ACTIVE", gstrBldrName, "DOWNLOADING", "", "", "", res);
 
                                     foreach (AbcBlends item in CheckBldsData)
@@ -13093,8 +15083,7 @@ namespace BlendMonitor.Service
                     if (curblend.vntIntvLen == null)
                     {
                         //'Statement setting the interval equal to the Project Cycle Time was commented out so un-commented it
-                        curblend.vntIntvLen = gdblProjCycleTime;
-                        var res = "";
+                        curblend.vntIntvLen = gdblProjCycleTime;                        
                         await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN3), programName, "BL-" + curblend.lngID, curblend.strName, curblend.vntIntvLen.ToString(), "", "", "", "", res);
                     }
 
@@ -13233,7 +15222,7 @@ namespace BlendMonitor.Service
                             gstrDownloadType = "STATION";
                         }
                     }
-
+                    
                     //if blens state=COMM ERR, skip next function
                     if (curblend.strState.Trim() != "COMM ERR")
                     {
@@ -13257,8 +15246,7 @@ namespace BlendMonitor.Service
                         await _repository.SetPendingState(null, curblend.lngID);
                     }
 
-                    if (enumDebugLevel >= DebugLevels.Medium) {                        
-                        var res = "";
+                    if (enumDebugLevel >= DebugLevels.Medium) {
                         await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG39), programName, cstrDebug, curblend.strName, curblend.strName, (curblend.vntPendSt == null)?"": curblend.vntPendSt, curblend.strState, "", "", res);
                     }
                     if (curblend.vntPendSt != null) {
@@ -13282,6 +15270,7 @@ namespace BlendMonitor.Service
                     }
                     else
                     {
+                        string OutRes = "";
                         switch (curblend.vntPendSt)
                         {
                             case "STARTING":
@@ -13299,23 +15288,203 @@ namespace BlendMonitor.Service
                                 else
                                 {
                                     //  'ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
-                                    var res = "";
+                                    OutRes = "";
                                     await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "START", gstrBldrName,
-                                        "", "", "", "", res);
+                                        "", "", "", "", OutRes);
 
                                     curblend.vntPendSt = null;
                                     //'call NULL_COMMAND_ACTION function
                                     await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
                                 }
+                                break;                            
+                            case "RESTARTING":
+                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                {
+                                    // call RESTART_BLEND function                                    
+                                    await ProcessBldCmd(BlendCmds.RESTART, intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                    if (curblend.vntPendSt == null)
+                                    {
+                                        //'call NULL_COMMAND_ACTION function
+                                        await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                    }
+                                }
+                                else
+                                {
+                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                    OutRes = "";
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "RESTART", gstrBldrName,
+                                        "", "", "", "", OutRes);
+
+                                    curblend.vntPendSt = null;
+                                    //'call NULL_COMMAND_ACTION function
+                                    await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                }
+
                                 break;
-                            default:
+                            case "PAUSING":
+                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                {
+                                    // call PAUSE_BLEND function
+                                    await ProcessBldCmd(BlendCmds.PAUSE, intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                    if (curblend.vntPendSt == null)
+                                    {
+                                        //'call NULL_COMMAND_ACTION function
+                                        await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                    }
+                                }
+                                else
+                                {
+                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                   
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "PAUSE", gstrBldrName,
+                                        "", "", "", "", OutRes);
+
+                                    curblend.vntPendSt = null;
+                                    //'call NULL_COMMAND_ACTION function
+                                    await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                }
+
                                 break;
-                        }
+                            case "DOWNLOADING":
+                                if ((curblend.strState == "PAUSED"))
+                                {
+                                    if ((await ChkBlendEquip(intI, vntBldrsData, curblend) == ValidInvalid.invalid))
+                                    {
+                                        goto UPDATE_BLD_DATA;
+                                    }
+
+                                }
+
+                                // call DOWNLOAD_BLEND function
+                                await Downloading(intI,vntBldrsData,curblend,enumBldrDbgLevel);
+                                if (curblend.vntPendSt == null)
+                                {
+                                    //'call NULL_COMMAND_ACTION function
+                                    await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                }
+                                break;
+                            case "STOPPING":
+                                if ((gProjDfs.strAllowStartStop == "YES"))
+                                {
+                                    // call STOP_BLEND function
+                                    await ProcessBldCmd(BlendCmds.STOP_, intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                    if (curblend.vntPendSt == null)
+                                    {
+                                        //'call NULL_COMMAND_ACTION function
+                                        await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                    }
+                                }
+                                else
+                                {
+                                    // ALLOW_START_AND_STOP_FLAG IS NO, CMD ^1 TO DCS NOT ALLOWED ON BLENDER ^1
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN11), programName, "BL-" + curblend.lngID, "STOP", gstrBldrName,
+                                        "", "", "", "", OutRes);
+
+                                    curblend.vntPendSt = null;
+                                    //'call NULL_COMMAND_ACTION function
+                                    await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                }
+
+                                break;
+                            case "OPTIMIZING":
+                                vntOptRunState = await _repository.GetPrgRunState("ABC OPTIMIZE MONITOR");
+                                if (vntOptRunState == null || vntOptRunState != "RUNNING")
+                                {
+                                    curblend.vntPendSt = null;
+                                    // call NULL_COMMAND_ACTION function
+                                    await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel, true);
+                                }
+
+                                // Monitor the active blend even if the pending state is optimizing
+                                // set the optimization flag to monitor blends during pending state="OPTIMIZING"
+                                gblnOptimizing[intI] = true;                                
+                                if (enumDebugLevel == DebugLevels.High)
+                                {
+                                    await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG4), programName, cstrDebug, curblend.strName, "NULL_COMMAND_ACTION",
+                                       "", "", "", "", OutRes);
+                                }
+                                // call NULL_COMMAND_ACTION function
+                                await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                gblnOptimizing[intI] = false;
+                                break;
+                            case "SWINGING":
+                                await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel);
+                                break;
+                            case "RETURNING":
+                                if ((curblend.strState.Trim() == "LOADED"))
+                                {
+                                    curblend.strState = "READY";
+                                }
+
+                                if ((gProjDfs.strAllowStartStop == "YES")&& (vntBldrsData[intI].StopTid != null))
+                                {
+                                    if (vntBldrsData[intI].RbcModeTid != null)
+                                    {
+                                        // get RBC mode flag value from ABC_TAGS
+                                        AbcTags data = await _repository.GetTagNameAndVal(vntBldrsData[intI].RbcModeTid);
+                                        tagRbcMode.vntTagName = data.Name;
+                                        tagRbcMode.vntTagVal = data.ReadValue.ToString();
+                                    }
+                                    else
+                                    {
+                                        tagRbcMode.vntTagName = null;
+                                        tagRbcMode.vntTagVal = null;
+                                    }
+
+                                    if (((tagRbcMode.vntTagVal == null) ? (int)YesNo.YES : Convert.ToInt32(tagRbcMode.vntTagVal)) == (int)YesNo.YES)
+                                    {
+                                        // 'send stop command to DCS tag
+                                        await _repository.SetWriteTagVal((int)YesNo.YES, "YES", vntBldrsData[intI].StopTid);
+                                    }
+                                    curblend.vntPendSt = null;
+                                    //   'set ABC_BLENDS.PENDING_STATE to null
+                                    await _repository.SetPendingState(null, curblend.lngID);
+                                }
+
+                                gArPrevBldData[intI].enumCmd = null;
+                                break;
+                            default:                                
+                                await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.WARN5), programName, "BL-" + curblend.lngID, curblend.vntPendSt, curblend.strName,
+                                    "", "", "", "", OutRes);
+                                await NullCmdAction(intI, vntBldrsData, curblend, enumBldrDbgLevel, true);
+                                break;
+                        }                        
                     }
 
+                UPDATE_BLD_DATA:
+                    List<AbcBlends> BlendState = await _repository.GetBlendState(curblend.lngID);
+                    strBlendState = BlendState[0].BlendState;
+                    if (strBlendState.Trim() == "PARTIAL" || strBlendState.Trim() == "READY" && curblend.vntPendSt.Trim() != "DOWNLOADING")
+                    {
+                        gArPrevBldData[intI].enumCmd = null;
+                    }
+                    else
+                    {
+                        // update ABC_BLENDS.BLEND_STATE with current blend state
+                        await _repository.SetBlendState(curblend.lngID, curblend.strState);
+                        // Clear swing flags for all comps in this blender.  Check that
+                        // no other blender is using the comps before clearing up the flags. Do this checking
+                        // for Loaded and Done blends (one time)
+                        if (((curblend.strState.Trim() == "LOADED") || (curblend.strState.Trim() == "DONE")))
+                        {
+                            await SetSwingTIDOFF((int)vntBldrsData[intI].PrdgrpId, ((vntBldrsData[intI].SwingTid == null) ? -1 : Convert.ToDouble(vntBldrsData[intI].SwingTid)), (int)vntBldrsData[intI].Id);
+                        }
+
+                    }
+                    
+                    // update interval # in previous blend data
+                    if ((gArPrevBldData[intI].intCurIntv < curblend.intCurIntv))
+                    {
+                        gArPrevBldData[intI].intCurIntv = curblend.intCurIntv;
+                    }
+
+                NEXT_BLENDER:
+                    curblend.intCurIntv = 0;
+                    curblend.strState = "";
 
                 }
             }
+            return 0;
         }
     }
 }

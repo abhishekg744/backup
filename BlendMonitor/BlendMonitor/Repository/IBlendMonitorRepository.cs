@@ -289,6 +289,29 @@ namespace BlendMonitor.Repository
         Task<int> SetAbcBlendPrevId(double oldBlendId, double blendId);
         Task<int> SetBlendSwingState(double tankId, double blendId, string state);
         Task<int> SetBlendSwingStateAndDoneAt(double tankId, double toTankId, double blendId);
+        Task<string> GetPrgRunState(string app);
+        Task<int> SetBlendSwingData2(string state, double blendId, double tankdId, double toTankId);
+        Task<int> SetBlendSourceSeqData(double blendId, double matId, double tankId, DateTime actualStart);
+        Task<int> SetAbcBlendInUseFlag(double blendId, double matId, double tankId, string flag);
+        Task<int> SetAbcBlendInUseFlag2(double blendId, double matId, double tankId, string flag);
+        Task<int> SetBlendSwingStateAndDoneAt2(double tankId, double toTankId, double blendId);
+        Task<int> SetBlendSourceSeqData2(double blendId, double matId, double tankId, int seq, double dblSeqVolUsed);
+        Task<List<double?>> GetCompLineup(double blendId, double matId, double tankId);
+        Task<AbcBlenderComps> GetBldrCompsSwingOccurID(double blenderId, double blendId, double tankId, double matId);
+        Task<List<double>> GetBldSourceSwgSeq(double blendId, double matId);
+        Task<AbcBlendComps> GetBldMatVol(double blendId, double matId);
+        Task<double?> GetBldSourceSumVolUsed(double blendId, double matId);
+        Task<int> InsetBlendSourceSeqData(double blendId, double matId, double tankId, int seq);
+        Task<List<double?>> GetCompLineups(double blendId, double matId, double tankId);
+        Task<int> InsertBlendStations(double blendId, double matId, double stationid, double stationMax, double stationMin);
+        Task<int> InsertBlendStations(double blendId, double matId, double lineupId);
+        Task<int> DeleteBlendStations(double blendId, double matId, double stationId);
+        Task<int> DeleteBlendStation2(double blendId, double matId);
+        Task<List<AbcBlendStations>> GetBlStations(double blendId, double matId);
+        Task<int> SetBlendStationsData(double blendId, double matId, double stationId, double? setpoint);
+        Task<double> GetCompEqpOrder(double lineupId, double stationId);
+        Task<int> SetBlendSwingState2(double tankId, double toTankId, double blendId, string state);
+        Task<int> SetBlendSwingStateAndDoneAt3(double tankId, double toTankId, double blendId);
         Task<string> LogMessage(int msgID, string prgm1, string gnrlText, string prgm2, string prgm3, string prgm4, string prgm5, string prgm6, string prgm7, string res);
     }
 }

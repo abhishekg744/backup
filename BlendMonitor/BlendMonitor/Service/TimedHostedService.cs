@@ -42,9 +42,9 @@ namespace BlendMonitor.Service
             return Task.CompletedTask;
         }
 
-        private void DoWork(object state)
+        private async void DoWork(object state)
         {
-            _blendMonitorService.ProcessBlenders();
+            await _blendMonitorService.ProcessBlenders();
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

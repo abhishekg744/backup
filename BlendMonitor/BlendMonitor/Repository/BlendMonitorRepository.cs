@@ -795,7 +795,7 @@ namespace BlendMonitor.Repository
             Data.Starttime = dteCurTime;
             await _blendMonitorContext.AbcBlendIntervals
                 .AddAsync(Data);
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
         }
 
         public async Task<int> AddNewIntvComps(int intIntvNum, double lngBldID)
@@ -816,7 +816,7 @@ namespace BlendMonitor.Repository
 
             await _blendMonitorContext.AbcBlendIntervalComps.AddAsync(Data);
 
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
         }
 
         public async Task<int> AddNewIntvProps(int intIntvNum, double lngBldID)
@@ -837,7 +837,7 @@ namespace BlendMonitor.Repository
 
             await _blendMonitorContext.AbcBlendIntervalProps.AddAsync(Data);
 
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
         }
         public async Task<int> SetNewIntv(int volume, double lngBldID, int intIntvNum)
         {
@@ -3865,9 +3865,25 @@ namespace BlendMonitor.Repository
             //"UPDATE abc_blend_swings SET (swing_state,done_at)=(" & _
             //"SELECT 'COMPLETE',SYSDATE FROM DUAL) WHERE blend_id=" & curblend.lngID & _
             //" AND from_tk_id=" & lngDestTkId & " AND to_tk_id=" & lngToTankID & " AND swing_state<>'COMPLETE'"
+
             AbcBlendSwings Data = await _blendMonitorContext.AbcBlendSwings
                                     .Where<AbcBlendSwings>(row => row.BlendId == blendId && row.FromTkId == tankdId
                                     && row.ToTkId == toTankId && row.SwingState != "COMPLETE")
+                                    .FirstOrDefaultAsync<AbcBlendSwings>();
+            Data.SwingState = state;
+            Data.DoneAt = DateTime.Now;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetBlendSwingData2(string state, double blendId, double tankdId, double toTankId)
+        {
+            
+            //"UPDATE abc_blend_swings SET (swing_state,done_at)=(" & _
+            //"SELECT 'ACTIVE',SYSDATE FROM DUAL) WHERE blend_id=" & curblend.lngID & _
+            //" AND from_tk_id=" & lngDestTkId & " AND to_tk_id=" & lngToTankID & " AND swing_state='READY'"
+
+            AbcBlendSwings Data = await _blendMonitorContext.AbcBlendSwings
+                                    .Where<AbcBlendSwings>(row => row.BlendId == blendId && row.FromTkId == tankdId
+                                    && row.ToTkId == toTankId && row.SwingState == "READY")
                                     .FirstOrDefaultAsync<AbcBlendSwings>();
             Data.SwingState = state;
             Data.DoneAt = DateTime.Now;
@@ -4053,7 +4069,7 @@ namespace BlendMonitor.Repository
             obj.LineupId = lineUpId;
             var data =  await _blendMonitorContext.AbcBlendDest
                         .AddAsync(obj);
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
 
         }
         public async Task<int> InsertBlendSwingData(double blendId, double tankId, double destTankId,double? swingCriteriaID)
@@ -4078,7 +4094,7 @@ namespace BlendMonitor.Repository
 
             var data = await _blendMonitorContext.AbcBlendSwings
                 .AddAsync(obj);
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
 
         }
         public async Task<int> SetBlendSwingData(double swingCriteriaID, double blendId, double tankId, double destTankId)
@@ -4376,7 +4392,7 @@ namespace BlendMonitor.Repository
 
             await _blendMonitorContext.AbcBlendDestProps.AddRangeAsync(Data);
 
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
         }
         public async Task<int> InsertAbcBlendDestSeq(double blendId, double tankId)
         {
@@ -4397,7 +4413,7 @@ namespace BlendMonitor.Repository
 
             await _blendMonitorContext.AbcBlendDestSeq.AddRangeAsync(Data);
 
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
         }
         public async Task<List<double>> GetDefaultLineupIds(double blendId,double tankId)
         {
@@ -4602,7 +4618,7 @@ namespace BlendMonitor.Repository
             DataObj.ModelErrClrdFlag = "NO";
 
             await _blendMonitorContext.AbcBlendProps.AddAsync(DataObj);
-            return 0;
+            return await _blendMonitorContext.SaveChangesAsync();
         }
         public async Task<List<AbcPrdgrpMatProps>> GetPrdgrpMatPropData(string blenderName, string prodName)
         {
@@ -5169,6 +5185,18 @@ namespace BlendMonitor.Repository
             return await _blendMonitorContext.SaveChangesAsync();
 
         }
+        public async Task<int> SetBlendSwingState2(double tankId, double toTankId, double blendId, string state)
+        {           
+
+            AbcBlendSwings Data = await _blendMonitorContext.AbcBlendSwings
+                               .Where<AbcBlendSwings>(row => row.BlendId == blendId && row.FromTkId == tankId 
+                                && row.ToTkId == toTankId && row.SwingState == "ACTIVE")
+                               .FirstOrDefaultAsync<AbcBlendSwings>();
+            Data.SwingState = state;
+
+            return await _blendMonitorContext.SaveChangesAsync();
+
+        }
         public async Task<int> SetBlendSwingStateAndDoneAt(double tankId,double toTankId, double blendId)
         {
             //"UPDATE abc_blend_swings SET (swing_state,done_at)=(" & _
@@ -5184,6 +5212,340 @@ namespace BlendMonitor.Repository
 
             return await _blendMonitorContext.SaveChangesAsync();
 
+        }
+        public async Task<int> SetBlendSwingStateAndDoneAt2(double tankId,double toTankId, double blendId)
+        {
+            //"UPDATE abc_blend_swings SET (swing_state,done_at)=(" & _
+            //"SELECT 'COMPLETE',SYSDATE FROM DUAL) WHERE blend_id=" & curblend.lngID & _
+            //" AND from_tk_id=" & lngSrcTankID & " AND to_tk_id=" & lngToTankID & " AND swing_state NOT IN ('INCOMPLETE','COMPLETE')"            
+
+            List<string> SwingStates = new List<string>() { "INCOMPLETE", "COMPLETE" };
+            AbcBlendSwings Data = await _blendMonitorContext.AbcBlendSwings
+                               .Where<AbcBlendSwings>(row => row.BlendId == blendId && row.FromTkId == tankId && row.ToTkId == toTankId 
+                               && !SwingStates.Contains(row.SwingState))
+                               .FirstOrDefaultAsync<AbcBlendSwings>();
+
+            Data.SwingState = "COMPLETE";
+            Data.DoneAt = DateTime.Now;
+
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetBlendSwingStateAndDoneAt3(double tankId, double toTankId, double blendId)
+        {
+            //"UPDATE abc_blend_swings SET (swing_state,done_at)=(" & _
+            //"SELECT 'ACTIVE',SYSDATE FROM DUAL) WHERE blend_id=" & curblend.lngID & _
+            //" AND from_tk_id=" & lngSrcTankID & " AND to_tk_id=" & lngToTankID & " AND swing_state='READY'"
+            
+            AbcBlendSwings Data = await _blendMonitorContext.AbcBlendSwings
+                               .Where<AbcBlendSwings>(row => row.BlendId == blendId && row.FromTkId == tankId && row.ToTkId == toTankId
+                               && row.SwingState == "READY")
+                               .FirstOrDefaultAsync<AbcBlendSwings>();
+
+            Data.SwingState = "ACTIVE";
+            Data.DoneAt = DateTime.Now;
+
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<string> GetPrgRunState(string app)
+        {
+            string outp = "";
+            try
+            {
+                SqlParameter prgName = new SqlParameter("@PRG_NAME", app);
+
+                // declaring output param
+                SqlParameter p_out = new SqlParameter();
+                p_out.ParameterName = "@RUN_STATE";
+                p_out.Value = outp;
+                p_out.Direction = ParameterDirection.Output;
+
+
+
+                // Processing.  
+                string sqlQuery = "[dbo].[ABC_SINGLETONS$GET_PRG_RUN_STATE]" +
+                                    " @PRG_NAME," +
+                                    " @RUN_STATE OUT";
+
+
+
+                int Data = await _blendMonitorContext.Database.ExecuteSqlRawAsync(sqlQuery, prgName, p_out);
+                return Convert.ToString(p_out.Value);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        public async Task<int> SetBlendSourceSeqData(double blendId, double matId, double tankId, DateTime actualStart)
+        {
+            //"UPDATE abc_blend_source_seq SET time_in=" & _
+            //"TO_DATE('" & Format(curblend.dteActualStart, strWinDateFmt & " " & WIN_TIME_FMT) & "','" & strOraDateFmt & " " & ORA_TIME_FMT & "') WHERE blend_id=" & curblend.lngID & _
+            //" AND mat_id=" & lngMatId & " AND tank_id=" & lngSrcTankID & _
+            //" AND swing_sequence=1"
+            AbcBlendSourceSeq Data = await _blendMonitorContext.AbcBlendSourceSeq
+                                        .Where<AbcBlendSourceSeq>(row => row.BlendId == blendId && row.MatId == matId
+                                        && row.TankId == tankId && row.SwingSequence == 1)
+                                        .FirstOrDefaultAsync();
+            Data.TimeIn = actualStart;
+            return await _blendMonitorContext.SaveChangesAsync();
+
+        }
+        public async Task<int> SetBlendSourceSeqData2(double blendId, double matId, double tankId, int seq, double dblSeqVolUsed)
+        {
+            //"UPDATE abc_blend_source_seq SET (vol_used,time_out)=(" & _
+            //"SELECT " & dblSeqVolUsed & ",SYSDATE FROM DUAL) WHERE blend_id=" & curblend.lngID & _
+            //" AND mat_id=" & lngMatId & " AND tank_id=" & lngSrcTankID & _
+            //" AND swing_sequence=" & intSwingSeq
+            AbcBlendSourceSeq Data = await _blendMonitorContext.AbcBlendSourceSeq
+                                        .Where<AbcBlendSourceSeq>(row => row.BlendId == blendId && row.MatId == matId
+                                        && row.TankId == tankId && row.SwingSequence == seq)
+                                        .FirstOrDefaultAsync();
+            Data.VolUsed = dblSeqVolUsed;
+            Data.TimeOut = DateTime.Now;
+            return await _blendMonitorContext.SaveChangesAsync();            
+        }
+        public async Task<int> SetAbcBlendInUseFlag(double blendId, double matId, double tankId, string flag)
+        {
+            //"UPDATE abc_blend_sources SET in_use_flag='NO' " & _
+            //"WHERE blend_id=" & curblend.lngID & " AND mat_id=" & lngMatId & " AND " & _
+            //"tank_id<>" & lngToTankID
+
+            AbcBlendSources Data = await _blendMonitorContext.AbcBlendSources
+                                    .Where<AbcBlendSources>(row => row.BlendId == blendId && row.MatId == matId
+                                    && row.TankId != tankId).FirstOrDefaultAsync<AbcBlendSources>();
+            Data.InUseFlag = flag;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> SetAbcBlendInUseFlag2(double blendId, double matId, double tankId, string flag)
+        {
+            //"UPDATE abc_blend_sources SET in_use_flag='NO' " & _
+            //"WHERE blend_id=" & curblend.lngID & " AND mat_id=" & lngMatId & " AND " & _
+            //"tank_id<>" & lngToTankID
+
+            AbcBlendSources Data = await _blendMonitorContext.AbcBlendSources
+                                    .Where<AbcBlendSources>(row => row.BlendId == blendId && row.MatId == matId
+                                    && row.TankId == tankId).FirstOrDefaultAsync<AbcBlendSources>();
+            Data.InUseFlag = flag;
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<List<double?>> GetCompLineup(double blendId, double matId, double tankId)
+        {
+            //select lineup_id from abc_blend_sources where blend_id =? and
+            //mat_id =? and tank_id =?
+            return await _blendMonitorContext.AbcBlendSources
+                                        .Where<AbcBlendSources>(row => row.BlendId == blendId
+                                        && row.MatId == matId && row.TankId == tankId)
+                                        .Select(row => row.LineupId)
+                                        .ToListAsync<double?>();
+        }
+        public async Task<AbcBlenderComps> GetBldrCompsSwingOccurID(double blenderId, double blendId, double tankId, double matId)
+        {
+            //select abc_blender_comps.swing_occurred_tid,
+            //abc_blender_comps.swing_tid
+            //from abc_blender_comps,
+            //     abc_blend_sources
+            //where abc_blender_comps.blender_id = ?
+            //  and abc_blend_sources.blend_id = ?
+            //  and abc_blend_sources.in_use_flag = 'YES'
+            //  and abc_blend_sources.mat_id = abc_blender_comps.mat_id
+            //  and abc_blend_sources.tank_id = ? and abc_blender_comps.mat_id =?
+
+            return await (from abc in _blendMonitorContext.AbcBlenderComps
+                   from abs in _blendMonitorContext.AbcBlendSources
+                   where abc.BlenderId == blenderId
+                    && abs.BlendId == blendId
+                    && abs.InUseFlag == "YES"
+                    && abs.MatId == abc.MatId
+                    && abs.TankId == tankId && abc.MatId == matId
+                   select new AbcBlenderComps
+                   {
+                       SwingOccurredTid = abc.SwingOccurredTid,
+                       SwingTid = abc.SwingTid
+                   }).FirstOrDefaultAsync<AbcBlenderComps>();
+        }
+        public async Task<List<double>> GetBldSourceSwgSeq(double blendId, double matId)
+        {
+            //select swing_sequence 
+            //from abc_blend_source_seq 
+            //where blend_id =? and mat_id =? order by swing_sequence desc
+
+            return await _blendMonitorContext.AbcBlendSourceSeq
+                                        .Where<AbcBlendSourceSeq>(row => row.BlendId == blendId && row.MatId == matId)
+                                        .OrderByDescending(row => row.SwingSequence)
+                                        .Select(row => row.SwingSequence)
+                                        .ToListAsync<double>();
+        }
+        public async Task<double?> GetBldSourceSumVolUsed(double blendId, double matId)
+        {
+            //select sum(vol_used) as Sum_VolUsed from abc_blend_source_seq where blend_id =? and mat_id =?
+
+            return await _blendMonitorContext.AbcBlendSourceSeq
+                                        .Where<AbcBlendSourceSeq>(row => row.BlendId == blendId && row.MatId == matId)
+                                        .SumAsync(row => row.VolUsed);                                        
+        }
+        public async Task<AbcBlendComps> GetBldMatVol(double blendId, double matId)
+        {
+            //select volume, cur_recipe 
+            //from abc_blend_comps
+            //where blend_id = ? and mat_id =?
+
+            
+            return await _blendMonitorContext.AbcBlendComps
+                                    .Where<AbcBlendComps>(row => row.BlendId == blendId && row.MatId == matId)
+                                    .Select(row => new AbcBlendComps { 
+                                    Volume = (row.Volume == null)?0: row.Volume,
+                                    CurRecipe = row.CurRecipe
+                                    })
+                                    .FirstOrDefaultAsync<AbcBlendComps>();                       
+        }
+        public async Task<int> InsetBlendSourceSeqData(double blendId, double matId, double tankId, int seq)
+        {
+            //"INSERT INTO abc_blend_source_seq (blend_id,mat_id,tank_id," & _
+            //"swing_sequence,time_in) VALUES (" & curblend.lngID & "," & lngMatId & "," & _
+            //lngToTankID & "," & intSwingSeq + 1 & ",SYSDATE)"
+
+            AbcBlendSourceSeq Data = new AbcBlendSourceSeq();
+            Data.BlendId = blendId;
+            Data.MatId = matId;
+            Data.TankId = tankId;
+            Data.SwingSequence = seq;
+            Data.TimeIn = DateTime.Now;
+            await _blendMonitorContext.AbcBlendSourceSeq.AddAsync(Data);
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<List<double?>> GetCompLineups(double blendId, double matId, double tankId)
+        {
+            //select line.station_id 
+            //from abc_blend_sources srce, abc_comp_lineup_eqp line 
+            //where srce.lineup_id = line.line_id and srce.blend_id =? and srce.mat_id =? and srce.tank_id = ?
+
+            return await (from srce in _blendMonitorContext.AbcBlendSources
+                          from line in _blendMonitorContext.AbcCompLineupEqp
+                          where srce.LineupId == line.LineId && srce.BlendId == blendId
+                          && srce.MatId == matId && srce.TankId == tankId
+                          select line.StationId).ToListAsync<double?>();
+        }
+        public async Task<int> InsertBlendStations(double blendId, double matId, double stationid,  double stationMax, double stationMin)
+        {
+            //"INSERT INTO abc_blend_stations " & _
+            //" (BLEND_ID,MAT_ID,STATION_ID,IN_USE_FLAG,MAX_FLOW,MIN_FLOW) " & _
+            //" VALUES (" & curblend.lngID & "," & lngMatId & "," & arToStatLineups(intI) & " ,'YES'," & _
+            //sngStationMax & "," & sngStationMin & ")"
+
+            AbcBlendStations Data = new AbcBlendStations();
+            Data.BlendId = blendId;
+            Data.MatId = matId;
+            Data.StationId = stationid;
+            Data.InUseFlag = "YES";
+            Data.MaxFlow = stationMax;
+            Data.MinFlow = stationMin;
+
+            await _blendMonitorContext.AbcBlendStations.AddAsync(Data);
+
+            return await _blendMonitorContext.SaveChangesAsync();
+        } 
+        public async Task<int> InsertBlendStations(double blendId, double matId, double lineupId)
+        {
+            //"INSERT INTO abc_blend_stations " & _
+            //" (BLEND_ID,MAT_ID,STATION_ID,IN_USE_FLAG,MAX_FLOW,MIN_FLOW) " & _
+            //" (SELECT " & curblend.lngID & "," & lngMatId & ",EQP.STATION_ID,'YES'," & _
+            //" ST.MAX,ST.MIN FROM ABC_COMP_LINEUP_EQP EQP, " & _
+            //" ABC_STATIONS ST WHERE EQP.STATION_ID = ST.ID(+) AND " & _
+            //" EQP.LINE_ID = " & lngTOLineupID & " AND EQP.STATION_ID IS NOT NULL)"
+
+            var res = await (from EQP in _blendMonitorContext.AbcCompLineupEqp
+                   from ST in _blendMonitorContext.AbcStations
+                   where EQP.StationId == ST.Id && EQP.LineId == lineupId && EQP.StationId != null
+                   select new Tuple<double?, double?, double?>(EQP.StationId, ST.Max, ST.Min))
+                   .FirstOrDefaultAsync<Tuple<double?, double?, double?>>();
+
+            AbcBlendStations Data = new AbcBlendStations();
+            Data.BlendId = blendId;
+            Data.MatId = matId;
+            Data.StationId = (double)res.Item1;
+            Data.InUseFlag = "YES";
+            Data.MaxFlow = res.Item2;
+            Data.MinFlow = res.Item3;
+
+            await _blendMonitorContext.AbcBlendStations.AddAsync(Data);
+
+            return await _blendMonitorContext.SaveChangesAsync();
+        }
+        public async Task<int> DeleteBlendStations(double blendId, double matId, double stationId)
+        {
+            //"DELETE ABC_BLEND_STATIONS WHERE BLEND_ID = "
+            //+ (curblend.lngID + (" AND MAT_ID = "
+            //+ (lngMatId + (" AND STATION_ID=" + lngFromStationId)))));
+            AbcBlendStations Data = await _blendMonitorContext.AbcBlendStations
+                                        .Where<AbcBlendStations>(row => row.BlendId == blendId
+                                        && row.MatId == matId && row.StationId == stationId)
+                                        .FirstOrDefaultAsync<AbcBlendStations>();
+            if (Data != null)
+            {
+                _blendMonitorContext.AbcBlendStations.Remove(Data);
+                return await _blendMonitorContext.SaveChangesAsync();
+            }
+            return 0;
+        }
+        public async Task<int> DeleteBlendStation2(double blendId, double matId)
+        {
+            //"DELETE ABC_BLEND_STATIONS WHERE BLEND_ID = "
+            //(curblend.lngID + (" AND MAT_ID = " + lngMatId)));
+
+            AbcBlendStations Data = await _blendMonitorContext.AbcBlendStations
+                                        .Where<AbcBlendStations>(row => row.BlendId == blendId
+                                        && row.MatId == matId)
+                                        .FirstOrDefaultAsync<AbcBlendStations>();
+            if (Data != null)
+            {
+                _blendMonitorContext.AbcBlendStations.Remove(Data);
+                return await _blendMonitorContext.SaveChangesAsync();
+            }
+            return 0;
+        }
+        public async Task<List<AbcBlendStations>> GetBlStations(double blendId, double matId)
+        {
+            //select station_id, min_flow, max_flow 
+            //from abc_blend_stations 
+            //where blend_id =? and mat_id =? and in_use_flag = 'YES' order by min_flow asc
+
+            return await _blendMonitorContext.AbcBlendStations
+                        .Where<AbcBlendStations>(row => row.BlendId == blendId && row.MatId == matId && row.InUseFlag == "YES")
+                        .Select(row => new AbcBlendStations
+                        {
+                            StationId = row.StationId,
+                            MinFlow = row.MinFlow,
+                            MaxFlow = row.MaxFlow
+                        }).ToListAsync<AbcBlendStations>();
+        }
+
+        public async Task<int> SetBlendStationsData(double blendId, double matId, double stationId, double? setpoint)
+        {
+            //"UPDATE abc_blend_stations SET cur_setpoint=" & _
+            //arStationRcps(intI) & " WHERE blend_id=" & curblend.lngID & _
+            //" AND mat_id=" & lngMatId & " AND station_id= " & arStationsIds(intI)
+
+            AbcBlendStations Data = await _blendMonitorContext.AbcBlendStations
+                                        .Where<AbcBlendStations>(row => row.BlendId == blendId && row.MatId == matId && row.StationId == stationId)
+                                        .FirstOrDefaultAsync<AbcBlendStations>();
+            Data.CurSetpoint = setpoint;
+            return await _blendMonitorContext.SaveChangesAsync();
+
+        }
+        public async Task<double> GetCompEqpOrder(double lineupId, double stationId)
+        {
+            //select line_eqp_order from abc_comp_lineup_eqp
+            //where line_id =? and station_id =?
+            double? data =  await _blendMonitorContext.AbcCompLineupEqp
+                        .Where<AbcCompLineupEqp>(row => row.LineId == lineupId && row.StationId == stationId)
+                        .Select(row => row.LineEqpOrder)
+                        .FirstOrDefaultAsync<double>();
+            
+            if(data == null)
+            {
+                return 1;
+            }
+            return (double)data;
         }
         public async Task<string> LogMessage(int msgID, string prgm1, string gnrlText, string prgm2, string prgm3, string prgm4, string prgm5,
             string prgm6, string prgm7, string res)
