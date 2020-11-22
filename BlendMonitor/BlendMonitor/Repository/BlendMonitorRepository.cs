@@ -16,7 +16,7 @@ using static BlendMonitor.Constans;
 
 namespace BlendMonitor.Repository
 {
-    class BlendMonitorRepository : IBlendMonitorRepository
+    public class BlendMonitorRepository : IBlendMonitorRepository
     {
         private BlendMonitorContext _blendMonitorContext;
         private readonly IConfiguration _configuration;
@@ -252,7 +252,7 @@ namespace BlendMonitor.Repository
             List<AbcBlenders> DataList = await _blendMonitorContext.AbcBlenders
                    .Where<AbcBlenders>(row => row.Id == belnderId)
                    .ToListAsync<AbcBlenders>();
-            if (DataList[0].ProgramError != null)
+            if (DataList.Count > 0 && DataList[0].ProgramError != null)
             {
                 AbcBlenders Data = DataList.Where<AbcBlenders>(row => (row.ProgramError.Contains(text) || row.ProgramError.Contains("%"))).FirstOrDefault<AbcBlenders>();
                 Data.ProgramError = prgmError;

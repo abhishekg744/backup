@@ -8,7 +8,7 @@ namespace BlendMonitor
     {
         public static string gArDebugLevelStrs(int level)
         {
-            if (level == 2)
+            if (level == 1)
             {
                 return "MEDIUM";
             }

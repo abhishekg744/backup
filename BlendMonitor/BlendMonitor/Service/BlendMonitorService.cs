@@ -95,6 +95,14 @@ namespace BlendMonitor.Service
             connectionString = _configuration.GetConnectionString("ABC_BlendMonitorDB");
         }
 
+        public async Task<int> testc()
+        {
+            var res = "";
+            await _repository.LogMessage(Convert.ToInt32(msgTmpltIDs.DBUG4), programName, cstrDebug, curblend.strName, "CHECK_COMMAND_VALIDITY",
+                    "", "", "", "", res);
+            return 0;
+        }
+
         private void NextBlend()
         {
             //'Reset the curblend data to nothing
